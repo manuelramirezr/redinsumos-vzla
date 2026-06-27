@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+
+# Local databases
+data/*.json
+!data/seeds/
+
+# User uploads
+public/uploads/
+uploads/
+
+# Environment configurations
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
