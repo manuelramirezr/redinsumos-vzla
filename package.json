@@ -1,0 +1,16 @@
+{
+  "name": "redinsumos-vzla",
+  "version": "1.0.0",
+  "description": "CUMIS Conecta closed marketplace for Venezuelan medical supplies",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
