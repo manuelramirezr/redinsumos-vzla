@@ -1,0 +1,90 @@
+[
+  {
+    "id": "3aa9c8a0-4b32-4d03-ba80-971f36b6c5f8",
+    "createdAt": "2026-06-30T00:40:03.225Z",
+    "mission_id": "MIS-INIT-1",
+    "reviewer_role": "donor",
+    "reviewer_id": "seed",
+    "reviewee_role": "hospital",
+    "reviewee_id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "stars": 5,
+    "comment": "Excelente comunicación."
+  },
+  {
+    "id": "32e352a5-328e-4230-ae5c-ccacec2cfdf8",
+    "createdAt": "2026-06-30T00:40:03.226Z",
+    "mission_id": "MIS-INIT-2",
+    "reviewer_role": "student",
+    "reviewer_id": "seed",
+    "reviewee_role": "hospital",
+    "reviewee_id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "stars": 4,
+    "comment": "Entrega coordinada a tiempo."
+  },
+  {
+    "id": "72c384e0-a8d0-4619-a1a2-613172497aec",
+    "createdAt": "2026-06-30T00:40:03.227Z",
+    "mission_id": "MIS-INIT-3",
+    "reviewer_role": "donor",
+    "reviewer_id": "seed",
+    "reviewee_role": "hospital",
+    "reviewee_id": "0f5c0000-4674-44f0-b402-0a27f7104c06",
+    "stars": 5,
+    "comment": "Hospital muy organizado."
+  },
+  {
+    "id": "05e1a09d-71c4-4cc8-b7af-4aaf1cd779d5",
+    "createdAt": "2026-06-30T00:40:03.228Z",
+    "mission_id": "MIS-INIT-4",
+    "reviewer_role": "hospital",
+    "reviewer_id": "seed",
+    "reviewee_role": "student",
+    "reviewee_id": "0dad5772-676f-4290-a563-c47eaf85a7db",
+    "stars": 5,
+    "comment": "Logística impecable."
+  },
+  {
+    "id": "90d5a9e3-808f-4f57-a16b-b0e1449d7a99",
+    "createdAt": "2026-06-30T00:40:03.230Z",
+    "mission_id": "MIS-INIT-5",
+    "reviewer_role": "donor",
+    "reviewer_id": "seed",
+    "reviewee_role": "student",
+    "reviewee_id": "0dad5772-676f-4290-a563-c47eaf85a7db",
+    "stars": 4,
+    "comment": "Buena comunicación de facturas."
+  },
+  {
+    "id": "34bd378c-18b0-42db-909b-3572202d50c8",
+    "createdAt": "2026-06-30T00:40:03.231Z",
+    "mission_id": "MIS-INIT-6",
+    "reviewer_role": "hospital",
+    "reviewer_id": "seed",
+    "reviewee_role": "provider",
+    "reviewee_id": "008c4a83-6029-4ae3-bda5-277089bc8b66",
+    "stars": 5,
+    "comment": "Entrega directa rápida."
+  },
+  {
+    "id": "0851c17e-6005-4c6a-a1ae-401c949093d7",
+    "createdAt": "2026-06-30T00:40:42.580Z",
+    "mission_id": "MIS-102",
+    "reviewer_id": "9133a447-4c88-4d5e-9393-6cd4014455cc",
+    "reviewer_role": "donor",
+    "reviewee_id": "1ae4c14c-451a-4ac8-b953-e95fd28472d8",
+    "reviewee_role": "provider",
+    "stars": 5,
+    "comment": "excelente despacho"
+  },
+  {
+    "id": "6a81e735-0318-493f-9faf-5af805ed7d48",
+    "createdAt": "2026-06-30T01:02:50.735Z",
+    "mission_id": "MIS-104",
+    "reviewer_id": "9133a447-4c88-4d5e-9393-6cd4014455cc",
+    "reviewer_role": "donor",
+    "reviewee_id": "14cc61db-ccaf-424f-9fc0-a2f12ee9ef26",
+    "reviewee_role": "provider",
+    "stars": 5,
+    "comment": "excelente despacho"
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "MIS-101",
+    "createdAt": "2026-06-30T00:28:16.708Z",
+    "hospital_id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "hospital_name": "Hospital Vargas de Caracas",
+    "student_id": "0dad5772-676f-4290-a563-c47eaf85a7db",
+    "student_name": "Carlos Mendoza",
+    "donor_id": null,
+    "donor_name": "Donador Omnicanal",
+    "total_amount": 80,
+    "status": "completed",
+    "updatedAt": "2026-06-30T00:28:42.907Z"
+  },
+  {
+    "id": "MIS-102",
+    "createdAt": "2026-06-30T00:40:42.503Z",
+    "hospital_id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "hospital_name": "Hospital Vargas de Caracas",
+    "student_id": null,
+    "student_name": null,
+    "donor_id": null,
+    "donor_name": "Donador Omnicanal",
+    "total_amount": 230,
+    "status": "funded",
+    "provider_id": "1ae4c14c-451a-4ac8-b953-e95fd28472d8",
+    "provider_name": "Farmacia Express",
+    "updatedAt": "2026-06-30T00:40:42.572Z"
+  },
+  {
+    "id": "MIS-103",
+    "createdAt": "2026-06-30T00:53:56.762Z",
+    "hospital_id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "hospital_name": "Hospital Vargas de Caracas",
+    "student_id": null,
+    "student_name": null,
+    "donor_id": null,
+    "donor_name": null,
+    "total_amount": 230,
+    "status": "created"
+  },
+  {
+    "id": "MIS-104",
+    "createdAt": "2026-06-30T01:02:50.623Z",
+    "hospital_id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "hospital_name": "Hospital Vargas de Caracas",
+    "student_id": null,
+    "student_name": null,
+    "donor_id": null,
+    "donor_name": "Donador Omnicanal",
+    "total_amount": 230,
+    "status": "funded",
+    "provider_id": "14cc61db-ccaf-424f-9fc0-a2f12ee9ef26",
+    "provider_name": "Farmacia Express",
+    "updatedAt": "2026-06-30T01:02:50.724Z"
+  }
+]

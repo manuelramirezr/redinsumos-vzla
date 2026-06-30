@@ -1,0 +1,16 @@
+[
+  {
+    "id": "0f5c0000-4674-44f0-b402-0a27f7104c06",
+    "createdAt": "2026-06-30T00:27:54.982Z",
+    "name": "Hospital Universitario de los Andes (IAHULA)",
+    "location": "Mérida, Venezuela",
+    "phone": "+584122222222"
+  },
+  {
+    "id": "47cbf879-f548-40b8-ace5-45eb26992062",
+    "createdAt": "2026-06-30T00:27:54.985Z",
+    "name": "Hospital Vargas de Caracas",
+    "location": "Caracas, Venezuela",
+    "phone": "+584121111111"
+  }
+]

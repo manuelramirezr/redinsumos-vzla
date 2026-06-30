@@ -1,0 +1,13 @@
+[
+  {
+    "id": "0dad5772-676f-4290-a563-c47eaf85a7db",
+    "createdAt": "2026-06-30T00:27:54.991Z",
+    "name": "Carlos Mendoza",
+    "phone": "+584141234567",
+    "email": "carlos@gmail.com",
+    "kyc_type": "meru",
+    "kyc_details": "@carlos_meru",
+    "password": "password123",
+    "status": "verified"
+  }
+]

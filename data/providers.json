@@ -1,0 +1,37 @@
+[
+  {
+    "id": "008c4a83-6029-4ae3-bda5-277089bc8b66",
+    "createdAt": "2026-06-30T00:40:03.216Z",
+    "name": "Droguería Mérida C.A.",
+    "phone": "+584167777777",
+    "email": "contacto@drogueriamerida.com",
+    "kyc_type": "meru",
+    "kyc_details": "@merida_drogueria",
+    "password": "password123",
+    "status": "verified"
+  },
+  {
+    "id": "1ae4c14c-451a-4ac8-b953-e95fd28472d8",
+    "createdAt": "2026-06-30T00:40:42.531Z",
+    "name": "Farmacia Express",
+    "phone": "+584168888888",
+    "email": "express@farmacia.com",
+    "kyc_type": "meru",
+    "kyc_details": "@farmacia_express",
+    "password": "password123",
+    "status": "verified",
+    "updatedAt": "2026-06-30T00:40:42.541Z"
+  },
+  {
+    "id": "14cc61db-ccaf-424f-9fc0-a2f12ee9ef26",
+    "createdAt": "2026-06-30T01:02:50.659Z",
+    "name": "Farmacia Express",
+    "phone": "+584165106697",
+    "email": "express@farmacia.com",
+    "kyc_type": "meru",
+    "kyc_details": "@farmacia_express",
+    "password": "password123",
+    "status": "verified",
+    "updatedAt": "2026-06-30T01:02:50.679Z"
+  }
+]

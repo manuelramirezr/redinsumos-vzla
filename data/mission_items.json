@@ -1,0 +1,90 @@
+[
+  {
+    "id": "49782406-c593-4882-9d82-69e4eca49b65",
+    "createdAt": "2026-06-30T00:28:16.709Z",
+    "mission_id": "MIS-101",
+    "product_name": "Gasas estériles",
+    "quantity": 50,
+    "price": 1.5
+  },
+  {
+    "id": "ba6d1684-d5b0-4fba-99b2-0e9b3f7cd5bf",
+    "createdAt": "2026-06-30T00:28:16.711Z",
+    "mission_id": "MIS-101",
+    "product_name": "Jeringas de 5, 10 y 20 ml",
+    "quantity": 20,
+    "price": 0.25
+  },
+  {
+    "id": "d835d459-c8f0-421a-adf4-44c4bf62c7ff",
+    "createdAt": "2026-06-30T00:40:42.504Z",
+    "mission_id": "MIS-102",
+    "product_name": "Alcohol",
+    "quantity": 30,
+    "price": 3
+  },
+  {
+    "id": "64411402-8f8b-4e54-86e2-02f5d253807a",
+    "createdAt": "2026-06-30T00:40:42.509Z",
+    "mission_id": "MIS-102",
+    "product_name": "Guantes estériles y no estériles",
+    "quantity": 10,
+    "price": 12.5
+  },
+  {
+    "id": "32a7a7c9-92d0-49bd-b9a4-29944101620e",
+    "createdAt": "2026-06-30T00:40:42.511Z",
+    "mission_id": "MIS-102",
+    "product_name": "Guantes de trabajo",
+    "quantity": 10,
+    "price": 1.5
+  },
+  {
+    "id": "e9ca144b-c3fd-4dba-9d16-e76310a93d38",
+    "createdAt": "2026-06-30T00:53:56.766Z",
+    "mission_id": "MIS-103",
+    "product_name": "Alcohol",
+    "quantity": 30,
+    "price": 3
+  },
+  {
+    "id": "34f98814-2f98-4c14-8973-54120caf6220",
+    "createdAt": "2026-06-30T00:53:56.767Z",
+    "mission_id": "MIS-103",
+    "product_name": "Guantes estériles y no estériles",
+    "quantity": 10,
+    "price": 12.5
+  },
+  {
+    "id": "3c3d6751-3d99-42d1-a755-557c7481bbcd",
+    "createdAt": "2026-06-30T00:53:56.768Z",
+    "mission_id": "MIS-103",
+    "product_name": "Guantes de trabajo",
+    "quantity": 10,
+    "price": 1.5
+  },
+  {
+    "id": "5b3e7b73-e5df-4da5-afa4-664ee021ec50",
+    "createdAt": "2026-06-30T01:02:50.629Z",
+    "mission_id": "MIS-104",
+    "product_name": "Alcohol",
+    "quantity": 30,
+    "price": 3
+  },
+  {
+    "id": "243803ea-a7cf-4a96-ba24-ef30f2e210fa",
+    "createdAt": "2026-06-30T01:02:50.633Z",
+    "mission_id": "MIS-104",
+    "product_name": "Guantes estériles y no estériles",
+    "quantity": 10,
+    "price": 12.5
+  },
+  {
+    "id": "23e06bc6-8a57-4914-9377-6fa81dfba870",
+    "createdAt": "2026-06-30T01:02:50.635Z",
+    "mission_id": "MIS-104",
+    "product_name": "Guantes de trabajo",
+    "quantity": 10,
+    "price": 1.5
+  }
+]

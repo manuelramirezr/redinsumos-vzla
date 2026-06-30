@@ -1,0 +1,35 @@
+[
+  {
+    "id": "41376877-4831-4dcb-8e4f-0ce8f5a7ddb1",
+    "createdAt": "2026-06-30T00:28:24.652Z",
+    "mission_id": "MIS-101",
+    "donor_transfer_path": "public/uploads/donor-transfer-mock.jpg",
+    "student_receipt_path": "public/uploads/student-receipt-mock.jpg",
+    "invoice_photo_path": "public/uploads/invoice-1782779314942-249452004.jpg",
+    "delivery_photo_path": "public/uploads/delivery-mock.jpg",
+    "uploaded_at": "2026-06-30T00:28:42.908Z",
+    "updatedAt": "2026-06-30T00:28:42.909Z"
+  },
+  {
+    "id": "bbc1c8b5-24a4-4fb6-8bc8-6c04daddffcd",
+    "createdAt": "2026-06-30T00:40:42.561Z",
+    "mission_id": "MIS-102",
+    "donor_transfer_path": "public/uploads/donor-transfer-mock.jpg",
+    "student_receipt_path": "public/uploads/student-receipt-mock.jpg",
+    "invoice_photo_path": null,
+    "delivery_photo_path": null,
+    "uploaded_at": "2026-06-30T00:40:42.573Z",
+    "updatedAt": "2026-06-30T00:40:42.573Z"
+  },
+  {
+    "id": "8822ef3d-036f-428f-adeb-735e7635589d",
+    "createdAt": "2026-06-30T01:02:50.714Z",
+    "mission_id": "MIS-104",
+    "donor_transfer_path": "public/uploads/donor-transfer-mock.jpg",
+    "student_receipt_path": "public/uploads/student-receipt-mock.jpg",
+    "invoice_photo_path": null,
+    "delivery_photo_path": null,
+    "uploaded_at": "2026-06-30T01:02:50.726Z",
+    "updatedAt": "2026-06-30T01:02:50.726Z"
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "130fbea4-4f10-469b-b19e-a9e30ea73463",
+    "createdAt": "2026-06-30T00:27:54.954Z",
+    "name": "Gasas estériles",
+    "supplier_name": "Droguería Médica Caracas",
+    "price": 1.5,
+    "stock": 1000
+  },
+  {
+    "id": "21c4e072-dd36-4a2a-8e5e-3d8db05338d3",
+    "createdAt": "2026-06-30T00:27:54.963Z",
+    "name": "Povidine",
+    "supplier_name": "FarmaOriente Mayorista",
+    "price": 4.8,
+    "stock": 200
+  },
+  {
+    "id": "09fb9d8c-966c-40a5-b5b9-9304d368f126",
+    "createdAt": "2026-06-30T00:27:54.964Z",
+    "name": "Suturas",
+    "supplier_name": "Insumos Médicos El Ávila",
+    "price": 2.2,
+    "stock": 500
+  },
+  {
+    "id": "20540b6c-e73d-43a0-bf6f-e57b2b1e8b07",
+    "createdAt": "2026-06-30T00:27:54.967Z",
+    "name": "Alcohol",
+    "supplier_name": "Droguería Médica Caracas",
+    "price": 3,
+    "stock": 300
+  },
+  {
+    "id": "a76459b9-bd6c-4994-b1b7-a1daa7cc7d9d",
+    "createdAt": "2026-06-30T00:27:54.969Z",
+    "name": "Guantes estériles y no estériles",
+    "supplier_name": "Suministros Clínicos Mérida",
+    "price": 12.5,
+    "stock": 150
+  },
+  {
+    "id": "a28d27b8-9ba6-4888-a0fb-3c6a8f7d08f9",
+    "createdAt": "2026-06-30T00:27:54.972Z",
+    "name": "Jeringas de 5, 10 y 20 ml",
+    "supplier_name": "Droguería Médica Caracas",
+    "price": 0.25,
+    "stock": 2000
+  },
+  {
+    "id": "5e37a620-4b5d-4a2f-ae7c-418b53ea6422",
+    "createdAt": "2026-06-30T00:27:54.973Z",
+    "name": "Solución ringer lactato",
+    "supplier_name": "Laboratorios Baxter C.A.",
+    "price": 2.1,
+    "stock": 400
+  },
+  {
+    "id": "cdbd2726-0df6-4808-a512-32f94c5cba4b",
+    "createdAt": "2026-06-30T00:27:54.975Z",
+    "name": "Solución 0,9%",
+    "supplier_name": "Laboratorios Baxter C.A.",
+    "price": 1.9,
+    "stock": 600
+  },
+  {
+    "id": "3e247477-0bb0-415a-9ca7-1fe92bd9b389",
+    "createdAt": "2026-06-30T00:27:54.978Z",
+    "name": "Pastillas potabilizadoras de agua",
+    "supplier_name": "Droguería Médica Caracas",
+    "price": 0.15,
+    "stock": 5000
+  }
+]

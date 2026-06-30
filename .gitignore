@@ -2,8 +2,8 @@
 node_modules/
 
 # Local databases
-data/*.json
-!data/seeds/
+
+
 
 # User uploads
 public/uploads/

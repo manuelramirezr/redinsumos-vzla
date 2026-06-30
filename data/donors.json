@@ -1,0 +1,16 @@
+[
+  {
+    "id": "9133a447-4c88-4d5e-9393-6cd4014455cc",
+    "createdAt": "2026-06-30T00:27:54.988Z",
+    "name": "Asociación Médica Internacional",
+    "email": "donor1@ami.org",
+    "phone": "+13059999999"
+  },
+  {
+    "id": "93b8657a-1e90-41f0-ae7c-27da67213c38",
+    "createdAt": "2026-06-30T00:27:54.989Z",
+    "name": "Fundación Salud y Vida",
+    "email": "info@saludyvida.org",
+    "phone": "+13058888888"
+  }
+]
