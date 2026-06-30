@@ -138,6 +138,18 @@ const STUDENT_SEEDS = [
   }
 ];
 
+const PROVIDER_SEEDS = [
+  {
+    name: 'Droguería Mérida C.A.',
+    phone: '+584167777777',
+    email: 'contacto@drogueriamerida.com',
+    kyc_type: 'meru',
+    kyc_details: '@merida_drogueria',
+    password: 'password123',
+    status: 'verified'
+  }
+];
+
 export async function seedDatabase() {
   await ensureDir(DATA_DIR);
   
@@ -177,8 +189,42 @@ export async function seedDatabase() {
     console.log('Seeded students.');
   }
 
+  // Seed verified provider for quick testing
+  const providers = await readTable('providers');
+  if (providers.length === 0) {
+    for (const prov of PROVIDER_SEEDS) {
+      await insertRecord('providers', prov);
+    }
+    console.log('Seeded providers.');
+  }
+
+  // Seed baseline ratings
+  const ratings = await readTable('ratings');
+  if (ratings.length === 0) {
+    const vargas = await findRecord('hospitals', { name: 'Hospital Vargas de Caracas' });
+    const iahula = await findRecord('hospitals', { name: 'Hospital Universitario de los Andes (IAHULA)' });
+    const carlos = await findRecord('students', { name: 'Carlos Mendoza' });
+    const drogueria = await findRecord('providers', { name: 'Droguería Mérida C.A.' });
+    
+    if (vargas) {
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-1', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: vargas.id, stars: 5, comment: 'Excelente comunicación.' });
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-2', reviewer_role: 'student', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: vargas.id, stars: 4, comment: 'Entrega coordinada a tiempo.' });
+    }
+    if (iahula) {
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-3', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: iahula.id, stars: 5, comment: 'Hospital muy organizado.' });
+    }
+    if (carlos) {
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-4', reviewer_role: 'hospital', reviewer_id: 'seed', reviewee_role: 'student', reviewee_id: carlos.id, stars: 5, comment: 'Logística impecable.' });
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-5', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'student', reviewee_id: carlos.id, stars: 4, comment: 'Buena comunicación de facturas.' });
+    }
+    if (drogueria) {
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-6', reviewer_role: 'hospital', reviewer_id: 'seed', reviewee_role: 'provider', reviewee_id: drogueria.id, stars: 5, comment: 'Entrega directa rápida.' });
+    }
+    console.log('Seeded baseline ratings.');
+  }
+
   // Create empty files for other tables if they don't exist
-  const tables = ['missions', 'mission_items', 'chats', 'evidences'];
+  const tables = ['missions', 'mission_items', 'chats', 'evidences', 'providers', 'ratings'];
   for (const t of tables) {
     const tData = await readTable(t);
     if (tData.length === 0) {

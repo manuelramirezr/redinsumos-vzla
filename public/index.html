@@ -126,6 +126,7 @@
       <div class="portal-role-selector">
         <button class="role-select-btn active" data-role="hosp">🏥 Soy Hospital</button>
         <button class="role-select-btn" data-role="stud">🎓 Soy Estudiante (Logística)</button>
+        <button class="role-select-btn" data-role="prov">🏭 Soy Proveedor</button>
         <button class="role-select-btn" data-role="donor">🌍 Soy Donante</button>
       </div>
 
@@ -280,6 +281,96 @@
         </div>
       </div>
 
+      <!-- 3B-2. PROVIDER VIEW -->
+      <div id="portal-view-prov" class="portal-subview">
+        <!-- Provider Auth (if not logged in) -->
+        <div id="provider-auth-container" class="auth-box glass-panel">
+          <div class="auth-tabs">
+            <button class="auth-tab-btn active" data-auth-mode="login">Ingresar Proveedor</button>
+            <button class="auth-tab-btn" data-auth-mode="register">Registrar Proveedor (KYC)</button>
+          </div>
+          
+          <!-- Login Form -->
+          <form id="provider-login-form" class="auth-form active">
+            <div class="form-group">
+              <label for="prov-login-phone">Teléfono Corporativo</label>
+              <input type="text" id="prov-login-phone" placeholder="Ej: +584167777777" required>
+            </div>
+            <div class="form-group">
+              <label for="prov-login-password">Contraseña</label>
+              <input type="password" id="prov-login-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Entrar al Portal</button>
+          </form>
+
+          <!-- Register Form -->
+          <form id="provider-register-form" class="auth-form">
+            <div class="form-group">
+              <label for="prov-reg-name">Nombre de la Empresa (Razón Social)</label>
+              <input type="text" id="prov-reg-name" placeholder="Ej: Droguería Mérida C.A." required>
+            </div>
+            <div class="form-group">
+              <label for="prov-reg-phone">Teléfono Corporativo</label>
+              <input type="text" id="prov-reg-phone" placeholder="Ej: +584167777777" required>
+            </div>
+            <div class="form-group">
+              <label for="prov-reg-email">Correo Electrónico Corporativo</label>
+              <input type="email" id="prov-reg-email" placeholder="contacto@drogueria.com" required>
+            </div>
+            <div class="form-group">
+              <label for="prov-reg-kyc-type">Billetera de Recibo Corporativa (KYC)</label>
+              <select id="prov-reg-kyc-type" required>
+                <option value="meru">Meru Wallet (Recomendado)</option>
+                <option value="zelle">Zelle Jurídico / Corporativo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="prov-reg-kyc-details">Usuario / Correo de Billetera</label>
+              <input type="text" id="prov-reg-kyc-details" placeholder="Ej: @merida_drogueria" required>
+            </div>
+            <div class="form-group">
+              <label for="prov-reg-password">Contraseña</label>
+              <input type="password" id="prov-reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Enviar Registro KYC</button>
+          </form>
+        </div>
+
+        <!-- Provider Dashboard (if logged in) -->
+        <div id="provider-dashboard" class="operator-layout hidden">
+          <!-- Sidebar profile -->
+          <div class="operator-sidebar">
+            <div class="glass-panel profile-card">
+              <h3>Mi Perfil de Proveedor</h3>
+              <p class="profile-name" id="provider-profile-name">-</p>
+              <div class="profile-meta">
+                <div><span>Billetera KYC:</span> <strong id="provider-profile-kyc-type" style="text-transform:uppercase;">-</strong></div>
+                <div><span>Usuario KYC:</span> <code id="provider-profile-kyc-details">-</code></div>
+                <div><span>Teléfono:</span> <strong id="provider-profile-phone">-</strong></div>
+                <div><span>Estado KYC:</span> <span class="badge badge-success">Verificado</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main lists: Available vs My missions -->
+          <div class="operator-main">
+            <div class="glass-panel">
+              <h3>Misiones Humanitarias Disponibles (Despacho Directo)</h3>
+              <div id="provider-available-missions" class="orders-list mt-4">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+
+            <div class="glass-panel mt-4">
+              <h3>Mis Despachos Directos</h3>
+              <div id="provider-my-missions" class="orders-list mt-4">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 3C. DONOR VIEW -->
       <div id="portal-view-donor" class="portal-subview">
         <div class="portal-grid" style="grid-template-columns: 1fr;">
@@ -318,6 +409,7 @@
               <option value="hosp-vargas" data-phone="+584121111111">🏥 Hospital Vargas (Tel: +584121111111)</option>
               <option value="hosp-iahula" data-phone="+584122222222">🏥 Hospital Universitario (Tel: +584122222222)</option>
               <option value="stud-carlos" data-phone="+584141234567">🎓 Estudiante Carlos Mendoza (Tel: +584141234567)</option>
+              <option value="prov-drogueria" data-phone="+584167777777">🏭 Proveedor Droguería Mérida (Tel: +584167777777)</option>
               <option value="donor-mia" data-phone="+13059999999">🌍 Donador Miami (Tel: +13059999999)</option>
             </select>
           </div>
@@ -333,10 +425,11 @@
           <div class="quick-commands-deck">
             <label>Comandos Rápidos</label>
             <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Crear mision Vargas con 30 gasas y 10 alcohol">🏥 Hospital: Crear misión Vargas...</button>
-            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Tomar mision MIS-101">🎓 Estudiante: Tomar misión MIS-101</button>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Tomar mision MIS-101">🚚 Operador: Tomar misión MIS-101</button>
             <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Donar a la mision MIS-101">🌍 Donante: Donar a misión MIS-101</button>
-            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Confirmar fondos MIS-101">🎓 Estudiante: Confirmar fondos MIS-101</button>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Confirmar fondos MIS-101">🚚 Operador: Confirmar fondos MIS-101</button>
             <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Confirmar entrega MIS-101">🏥 Hospital: Confirmar entrega MIS-101</button>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Valorar MIS-101 con 5 estrellas: Excelente logística">⭐️ Valorar MIS-101 con 5 estrellas...</button>
           </div>
         </div>
 
@@ -389,8 +482,8 @@
 
       <!-- Admin Dashboard (if logged in) -->
       <div id="admin-dashboard" class="admin-layout hidden">
-        <div class="admin-grid-top" style="grid-template-columns:1fr;">
-          <!-- Verification Panel -->
+        <div class="admin-grid-top" style="display:flex;flex-direction:column;gap:2rem;">
+          <!-- Verification Panel (Students) -->
           <div class="glass-panel admin-sub-panel">
             <h3>Aprobación de KYC Estudiantil</h3>
             <div class="operator-verification-list">
@@ -408,6 +501,29 @@
                 <tbody id="admin-pending-students-body">
                   <!-- Rendered via JS -->
                   <tr><td colspan="6" class="empty-state">No hay estudiantes en espera de verificación.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Verification Panel (Providers) -->
+          <div class="glass-panel admin-sub-panel">
+            <h3>Aprobación de KYC de Proveedores</h3>
+            <div class="operator-verification-list">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Empresa</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th>Billetera KYC</th>
+                    <th>Usuario KYC</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-pending-providers-body">
+                  <!-- Rendered via JS -->
+                  <tr><td colspan="6" class="empty-state">No hay proveedores en espera de verificación.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -445,11 +561,12 @@
             
             <div class="modal-info-group">
               <h4>Ubicación y Destinatario</h4>
-              <div class="detail-label">Hospital Receptor: <strong id="modal-hospital-name">-</strong></div>
-              <div class="detail-label">Estudiante Asignado: <strong id="modal-student-name">-</strong></div>
+              <div class="detail-label">Hospital Receptor: <strong id="modal-hospital-name">-</strong> <span id="modal-hospital-stars" style="color:var(--accent-amber)"></span></div>
+              <div class="detail-label">Estudiante Asignado: <strong id="modal-student-name">-</strong> <span id="modal-student-stars" style="color:var(--accent-amber)"></span></div>
+              <div class="detail-label">Proveedor Directo: <strong id="modal-provider-name">-</strong> <span id="modal-provider-stars" style="color:var(--accent-amber)"></span></div>
               <div class="detail-label">Billetera de Pago (KYC): <strong id="modal-kyc-type" style="text-transform:uppercase;">-</strong></div>
               <div class="detail-label">Cuenta de Depósito: <code id="modal-kyc-details">-</code></div>
-              <div class="detail-label">Donante Financiador: <strong id="modal-donor-name">-</strong></div>
+              <div class="detail-label">Donante Financiador: <strong id="modal-donor-name">-</strong> <span id="modal-donor-stars" style="color:var(--accent-amber)"></span></div>
             </div>
 
             <div class="modal-info-group">

@@ -30,12 +30,14 @@ International individuals or entities funding missions.
 * `phone`: string
 
 ### 4. `missions`
-The core transactional entity tracking the medical procurement request.
-* `id`: string (short identifier for WhatsApp, e.g. "MIS-102")
+Critical medical supply request tracking.
+* `id`: string (friendly ID like `MIS-101`)
 * `hospital_id`: string
 * `hospital_name`: string
-* `student_id`: string (nullable until claimed)
+* `student_id`: string (nullable)
 * `student_name`: string (nullable)
+* `provider_id`: string (nullable)
+* `provider_name`: string (nullable)
 * `donor_id`: string (nullable until funded)
 * `donor_name`: string (nullable)
 * `total_amount`: number
@@ -55,20 +57,44 @@ Detailed products requested in a specific mission.
 Message feed context for both the Web detail modal and simulated omnichannel agent integrations.
 * `id`: string (UUID)
 * `mission_id`: string
-* `sender_role`: `'hospital'` | `'student'` | `'donor'` | `'admin'` | `'system'`
+* `sender_role`: `'hospital'` | `'student'` | `'provider'` | `'donor'` | `'admin'` | `'system'`
 * `sender_name`: string
 * `message`: string
 * `timestamp`: timestamp
 
 ### 7. `evidences`
-Invoice and delivery proof files uploaded by students and health officials.
+Invoice and delivery proof files uploaded by students, providers, and health officials.
 * `id`: string (UUID)
 * `mission_id`: string
 * `donor_transfer_path`: string (screenshot of donor Zelle/Meru transfer)
-* `student_receipt_path`: string (screenshot of student wallet balance confirming receipt)
+* `student_receipt_path`: string (screenshot of student or provider wallet balance confirming receipt)
 * `invoice_photo_path`: string (merchant bill capture)
 * `delivery_photo_path`: string (hospital delivery confirmation capture)
 * `uploaded_at`: timestamp
+
+### 8. `providers` [NEW]
+Wholesalers or drugstores registered on the platform.
+* `id`: string (UUID)
+* `name`: string
+* `phone`: string
+* `email`: string
+* `kyc_type`: `'zelle'` | `'meru'`
+* `kyc_details`: string
+* `password`: string
+* `status`: `'pending'` | `'verified'`
+* `createdAt`: timestamp
+
+### 9. `ratings` [NEW]
+Feedback reviews left by participants.
+* `id`: string (UUID)
+* `mission_id`: string
+* `reviewer_id`: string
+* `reviewer_role`: `'student'` | `'provider'` | `'donor'` | `'hospital'`
+* `reviewee_id`: string
+* `reviewee_role`: `'student'` | `'provider'` | `'donor'` | `'hospital'`
+* `stars`: number (1-5)
+* `comment`: string
+* `createdAt`: timestamp
 
 ---
 

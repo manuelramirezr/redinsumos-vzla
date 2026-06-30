@@ -96,6 +96,39 @@ async function getAuthenticatedStudent(req) {
   return null;
 }
 
+// Helper to authenticate Provider
+async function getAuthenticatedProvider(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return null;
+  const token = authHeader.replace('Bearer ', '');
+  if (token === ADMIN_PASSCODE) return null;
+  
+  const provider = await findRecord('providers', { id: token });
+  if (provider && provider.status === 'verified') {
+    return provider;
+  }
+  return null;
+}
+
+// Helper to authenticate either Student or Provider
+async function getAuthenticatedOperator(req) {
+  const student = await getAuthenticatedStudent(req);
+  if (student) return { type: 'student', user: student };
+  
+  const provider = await getAuthenticatedProvider(req);
+  if (provider) return { type: 'provider', user: provider };
+  
+  return null;
+}
+
+// Utility to calculate average rating stars for any entity
+async function getAverageRating(revieweeId) {
+  const ratings = await findRecords('ratings', { reviewee_id: revieweeId });
+  if (ratings.length === 0) return 5.0; // default to 5.0 stars
+  const sum = ratings.reduce((acc, r) => acc + Number(r.stars), 0);
+  return Number((sum / ratings.length).toFixed(2));
+}
+
 // ==========================================
 // 1. PUBLIC DASHBOARD STATS
 // ==========================================
@@ -129,7 +162,7 @@ app.get('/api/dashboard-stats', async (req, res) => {
         order_id: mission.id,
         supplier_name: mission.hospital_name,
         total_amount: mission.total_amount,
-        operator_name: mission.student_name || 'Estudiante CUMIS',
+        operator_name: mission.student_name || mission.provider_name || 'Operador CUMIS',
         invoice_photo: evidence && evidence.invoice_photo_path ? `/uploads/${path.basename(evidence.invoice_photo_path)}` : null,
         delivery_photo: evidence && evidence.delivery_photo_path ? `/uploads/${path.basename(evidence.delivery_photo_path)}` : null,
         completedAt: (evidence && evidence.uploaded_at) || mission.updatedAt || mission.createdAt
@@ -287,14 +320,116 @@ app.post('/api/students/verify', async (req, res) => {
 });
 
 // ==========================================
+// 4.5 PROVIDER MANAGEMENT & AUTH
+// ==========================================
+app.post('/api/providers/register', async (req, res) => {
+  try {
+    const { name, phone, email, kyc_type, kyc_details, password } = req.body;
+    
+    if (!name || !phone || !email || !kyc_type || !kyc_details || !password) {
+      return res.status(400).json({ error: 'Faltan campos requeridos.' });
+    }
+
+    if (!['zelle', 'meru'].includes(kyc_type)) {
+      return res.status(400).json({ error: 'Método KYC inválido. Elija Zelle o Meru.' });
+    }
+
+    const existing = await findRecord('providers', { phone });
+    if (existing) {
+      return res.status(400).json({ error: 'Este número de teléfono ya está registrado como proveedor.' });
+    }
+
+    const provider = await insertRecord('providers', {
+      name,
+      phone,
+      email,
+      kyc_type,
+      kyc_details,
+      password,
+      status: 'pending' // pending manual admin verification
+    });
+
+    res.status(201).json({
+      id: provider.id,
+      name: provider.name,
+      phone: provider.phone,
+      kyc_type: provider.kyc_type,
+      kyc_details: provider.kyc_details,
+      status: provider.status
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/providers/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Por favor, ingrese teléfono y contraseña.' });
+    }
+
+    const provider = await findRecord('providers', { phone, password });
+    if (!provider) {
+      return res.status(401).json({ error: 'Credenciales inválidas para proveedor.' });
+    }
+
+    if (provider.status !== 'verified') {
+      return res.status(403).json({
+        error: 'Su cuenta de proveedor está en espera de verificación KYC por el Administrador.',
+        status: 'pending'
+      });
+    }
+
+    res.json({
+      role: 'provider',
+      token: provider.id,
+      id: provider.id,
+      name: provider.name,
+      phone: provider.phone,
+      kyc_type: provider.kyc_type,
+      kyc_details: provider.kyc_details
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/providers/pending', async (req, res) => {
+  try {
+    if (!isAdmin(req)) {
+      return res.status(401).json({ error: 'No autorizado. Permisos de administrador requeridos.' });
+    }
+    const pending = await findRecords('providers', { status: 'pending' });
+    res.json(pending);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/providers/verify', async (req, res) => {
+  try {
+    if (!isAdmin(req)) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+    const { id, status } = req.body;
+    if (!id || !status) {
+      return res.status(400).json({ error: 'Falta ID de proveedor o estado.' });
+    }
+
+    const provider = await updateRecord('providers', id, { status });
+    res.json({ id: provider.id, name: provider.name, status: provider.status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
 // 5. MISSIONS / ORDERS FLOW
 // ==========================================
 app.get('/api/missions', async (req, res) => {
   try {
-    const adminMode = isAdmin(req);
-    const student = await getAuthenticatedStudent(req);
-
-    // Allow viewing all missions for dashboard lists and available items, public access gets basic info
     const missions = await readTable('missions');
     const enriched = [];
 
@@ -302,13 +437,25 @@ app.get('/api/missions', async (req, res) => {
       const items = await findRecords('mission_items', { mission_id: m.id });
       const evidence = await findRecord('evidences', { mission_id: m.id });
       const stud = m.student_id ? await findRecord('students', { id: m.student_id }) : null;
+      const prov = m.provider_id ? await findRecord('providers', { id: m.provider_id }) : null;
+      
+      const hospRating = await getAverageRating(m.hospital_id);
+      const studRating = stud ? await getAverageRating(stud.id) : null;
+      const provRating = prov ? await getAverageRating(prov.id) : null;
       
       enriched.push({
         ...m,
         items,
+        hospital_rating: hospRating,
+        student_rating: studRating,
+        provider_rating: provRating,
         student_kyc_type: stud ? stud.kyc_type : null,
         student_kyc_details: stud ? stud.kyc_details : null,
+        provider_kyc_type: prov ? prov.kyc_type : null,
+        provider_kyc_details: prov ? prov.kyc_details : null,
         evidence: evidence ? {
+          donor_transfer_photo: evidence.donor_transfer_path ? `/uploads/${path.basename(evidence.donor_transfer_path)}` : null,
+          student_receipt_photo: evidence.student_receipt_path ? `/uploads/${path.basename(evidence.student_receipt_path)}` : null,
           invoice_photo: evidence.invoice_photo_path ? `/uploads/${path.basename(evidence.invoice_photo_path)}` : null,
           delivery_photo: evidence.delivery_photo_path ? `/uploads/${path.basename(evidence.delivery_photo_path)}` : null,
           uploaded_at: evidence.uploaded_at
@@ -316,7 +463,18 @@ app.get('/api/missions', async (req, res) => {
       });
     }
 
-    res.json(enriched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+    // Sort available (created) missions first, ordered by hospital_rating descending
+    // then other missions sorted by creation date descending
+    enriched.sort((a, b) => {
+      if (a.status === 'created' && b.status !== 'created') return -1;
+      if (a.status !== 'created' && b.status === 'created') return 1;
+      if (a.status === 'created' && b.status === 'created') {
+        return b.hospital_rating - a.hospital_rating;
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -332,18 +490,33 @@ app.get('/api/missions/:id', async (req, res) => {
     const items = await findRecords('mission_items', { mission_id: mission.id });
     const evidence = await findRecord('evidences', { mission_id: mission.id });
     const chats = await findRecords('chats', { mission_id: mission.id });
+    
     const stud = mission.student_id ? await findRecord('students', { id: mission.student_id }) : null;
+    const prov = mission.provider_id ? await findRecord('providers', { id: mission.provider_id }) : null;
+    
+    const hospRating = await getAverageRating(mission.hospital_id);
+    const studRating = stud ? await getAverageRating(stud.id) : null;
+    const provRating = prov ? await getAverageRating(prov.id) : null;
+    const donorRating = mission.donor_name ? 5.0 : null; // simplified baseline donor rating
 
     res.json({
       ...mission,
       items,
+      hospital_rating: hospRating,
+      student_rating: studRating,
+      provider_rating: provRating,
+      donor_rating: donorRating,
       evidence: evidence ? {
+        donor_transfer_photo: evidence.donor_transfer_path ? `/uploads/${path.basename(evidence.donor_transfer_path)}` : null,
+        student_receipt_photo: evidence.student_receipt_path ? `/uploads/${path.basename(evidence.student_receipt_path)}` : null,
         invoice_photo: evidence.invoice_photo_path ? `/uploads/${path.basename(evidence.invoice_photo_path)}` : null,
         delivery_photo: evidence.delivery_photo_path ? `/uploads/${path.basename(evidence.delivery_photo_path)}` : null,
         uploaded_at: evidence.uploaded_at
       } : null,
       student_kyc_type: stud ? stud.kyc_type : null,
       student_kyc_details: stud ? stud.kyc_details : null,
+      provider_kyc_type: prov ? prov.kyc_type : null,
+      provider_kyc_details: prov ? prov.kyc_details : null,
       chats: chats.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     });
   } catch (error) {
@@ -412,12 +585,12 @@ app.post('/api/missions', async (req, res) => {
   }
 });
 
-// Student claims a mission
+// Student or Provider claims a mission
 app.post('/api/missions/:id/claim', async (req, res) => {
   try {
-    const student = await getAuthenticatedStudent(req);
-    if (!student) {
-      return res.status(401).json({ error: 'No autorizado. Requiere estudiante verificado KYC.' });
+    const operator = await getAuthenticatedOperator(req);
+    if (!operator) {
+      return res.status(401).json({ error: 'No autorizado. Requiere estudiante o proveedor verificado KYC.' });
     }
 
     const mission = await findRecord('missions', { id: req.params.id });
@@ -429,19 +602,36 @@ app.post('/api/missions/:id/claim', async (req, res) => {
       return res.status(400).json({ error: 'La misión ya ha sido tomada.' });
     }
 
-    // Update mission
-    const updated = await updateRecord('missions', mission.id, {
-      student_id: student.id,
-      student_name: student.name,
-      status: 'claimed'
-    });
+    // Rating matching constraints: missions > $100 require operator rating >= 4.0 stars
+    const operatorRating = await getAverageRating(operator.user.id);
+    if (Number(mission.total_amount) > 100.00 && operatorRating < 4.0) {
+      return res.status(400).json({
+        error: `Esta misión requiere un fondeo alto ($${Number(mission.total_amount).toFixed(2)}). Para tomarla necesitas una valoración mínima de 4.0 estrellas (Tu promedio actual es ${operatorRating}).`
+      });
+    }
+
+    // Update mission based on operator type
+    const claimData = { status: 'claimed' };
+    if (operator.type === 'student') {
+      claimData.student_id = operator.user.id;
+      claimData.student_name = operator.user.name;
+      claimData.provider_id = null;
+      claimData.provider_name = null;
+    } else {
+      claimData.provider_id = operator.user.id;
+      claimData.provider_name = operator.user.name;
+      claimData.student_id = null;
+      claimData.student_name = null;
+    }
+
+    const updated = await updateRecord('missions', mission.id, claimData);
 
     // Log chat message
     await insertRecord('chats', {
       mission_id: mission.id,
       sender_role: 'system',
       sender_name: 'Sistema',
-      message: `Misión tomada por el estudiante ${student.name}. KYC asociado: [${student.kyc_type.toUpperCase()}] ${student.kyc_details}. Solicitud de fondos enviada a los donadores del mundo.`,
+      message: `Misión tomada por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}). KYC asociado: [${operator.user.kyc_type.toUpperCase()}] ${operator.user.kyc_details}. Solicitud de fondos enviada a los donadores del mundo.`,
       timestamp: new Date().toISOString()
     });
 
@@ -497,7 +687,7 @@ app.post('/api/missions/:id/fund', upload.single('transfer_proof'), async (req, 
       mission_id: mission.id,
       sender_role: 'system',
       sender_name: 'Sistema',
-      message: `El donador ${donor_name} ha enviado los fondos (comprobante cargado). Estado: [Comprobante Enviado]. Esperando verificación del estudiante.`,
+      message: `El donador ${donor_name} ha enviado los fondos (comprobante cargado). Estado: [Comprobante Enviado]. Esperando verificación del operador.`,
       timestamp: new Date().toISOString()
     });
 
@@ -507,12 +697,12 @@ app.post('/api/missions/:id/fund', upload.single('transfer_proof'), async (req, 
   }
 });
 
-// Student confirms receipt of funds in Meru/Zelle and uploads wallet screenshot
+// Student or Provider confirms receipt of funds in Meru/Zelle and uploads wallet screenshot
 app.post('/api/missions/:id/confirm-receipt', upload.single('receipt_proof'), async (req, res) => {
   try {
-    const student = await getAuthenticatedStudent(req);
-    if (!student) {
-      return res.status(401).json({ error: 'No autorizado. Requiere estudiante verificado.' });
+    const operator = await getAuthenticatedOperator(req);
+    if (!operator) {
+      return res.status(401).json({ error: 'No autorizado. Requiere operador verificado.' });
     }
 
     const mission = await findRecord('missions', { id: req.params.id });
@@ -520,7 +710,7 @@ app.post('/api/missions/:id/confirm-receipt', upload.single('receipt_proof'), as
       return res.status(404).json({ error: 'Misión no encontrada.' });
     }
 
-    if (mission.student_id !== student.id) {
+    if (mission.student_id !== operator.user.id && mission.provider_id !== operator.user.id) {
       return res.status(403).json({ error: 'No tiene permisos para confirmar recepción en esta misión.' });
     }
 
@@ -560,7 +750,7 @@ app.post('/api/missions/:id/confirm-receipt', upload.single('receipt_proof'), as
       mission_id: mission.id,
       sender_role: 'system',
       sender_name: 'Sistema',
-      message: `El estudiante ${student.name} ha verificado y confirmado la recepción de los fondos. Estado: [Fondos Disponibles]. Listo para compra.`,
+      message: `El operador ${operator.user.name} ha verificado y confirmado la recepción de los fondos. Estado: [Fondos Disponibles]. Listo para compra/despacho.`,
       timestamp: new Date().toISOString()
     });
 
@@ -570,12 +760,12 @@ app.post('/api/missions/:id/confirm-receipt', upload.single('receipt_proof'), as
   }
 });
 
-// Student uploads merchant invoice
+// Student or Provider uploads merchant invoice
 app.post('/api/missions/:id/invoice', upload.single('invoice'), async (req, res) => {
   try {
-    const student = await getAuthenticatedStudent(req);
-    if (!student) {
-      return res.status(401).json({ error: 'No autorizado. Requiere estudiante verificado.' });
+    const operator = await getAuthenticatedOperator(req);
+    if (!operator) {
+      return res.status(401).json({ error: 'No autorizado. Requiere operador verificado.' });
     }
 
     const mission = await findRecord('missions', { id: req.params.id });
@@ -583,7 +773,7 @@ app.post('/api/missions/:id/invoice', upload.single('invoice'), async (req, res)
       return res.status(404).json({ error: 'Misión no encontrada.' });
     }
 
-    if (mission.student_id !== student.id) {
+    if (mission.student_id !== operator.user.id && mission.provider_id !== operator.user.id) {
       return res.status(403).json({ error: 'No tiene permisos para modificar esta misión.' });
     }
 
@@ -621,7 +811,7 @@ app.post('/api/missions/:id/invoice', upload.single('invoice'), async (req, res)
       mission_id: mission.id,
       sender_role: 'system',
       sender_name: 'Sistema',
-      message: `El estudiante ${student.name} ha comprado los suministros y cargado la factura. Listos para despacho a destino.`,
+      message: `El operador ${operator.user.name} ha comprado los suministros y cargado la factura. Listos para despacho a destino.`,
       timestamp: new Date().toISOString()
     });
 
@@ -673,6 +863,65 @@ app.post('/api/missions/:id/verify-delivery', upload.single('delivery'), async (
     });
 
     res.json({ success: true, message: 'Misión completada con éxito.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Submit a review / rating for a participant of a completed mission
+app.post('/api/missions/:id/ratings', async (req, res) => {
+  try {
+    const { stars, comment, reviewee_id, reviewee_role } = req.body;
+    if (!stars || !reviewee_id || !reviewee_role) {
+      return res.status(400).json({ error: 'Faltan datos de valoración (estrellas, reviewee_id, reviewee_role).' });
+    }
+
+    const mission = await findRecord('missions', { id: req.params.id });
+    if (!mission) {
+      return res.status(404).json({ error: 'Misión no encontrada.' });
+    }
+
+    // Determine reviewer details
+    let reviewer_id = 'guest';
+    let reviewer_role = 'donor';
+    
+    const student = await getAuthenticatedStudent(req);
+    const provider = await getAuthenticatedProvider(req);
+    if (student) {
+      reviewer_id = student.id;
+      reviewer_role = 'student';
+    } else if (provider) {
+      reviewer_id = provider.id;
+      reviewer_role = 'provider';
+    } else if (isAdmin(req)) {
+      reviewer_id = 'admin';
+      reviewer_role = 'admin';
+    } else {
+      // Check if donor or hospital was submitted via body
+      reviewer_role = req.body.reviewer_role || 'donor';
+      reviewer_id = req.body.reviewer_id || 'donor';
+    }
+
+    const rating = await insertRecord('ratings', {
+      mission_id: mission.id,
+      reviewer_id,
+      reviewer_role,
+      reviewee_id,
+      reviewee_role,
+      stars: Number(stars),
+      comment: comment || ''
+    });
+
+    // Log chat message
+    await insertRecord('chats', {
+      mission_id: mission.id,
+      sender_role: 'system',
+      sender_name: 'Sistema',
+      message: `Nueva valoración registrada para [${reviewee_role.toUpperCase()}] con ${stars} estrellas: "${comment || ''}" (de ${reviewer_role.toUpperCase()}).`,
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(201).json(rating);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -816,7 +1065,7 @@ app.post('/api/webhooks/agent', async (req, res) => {
       });
     }
 
-    // 2. STUDENT CLAIM MISSION COMMAND
+    // 2. STUDENT OR PROVIDER CLAIM MISSION COMMAND
     // format: "tomar mision mis-101"
     if (text.startsWith('tomar mision') || text.startsWith('tomar misión')) {
       const match = text.match(/mis-\d+/);
@@ -825,16 +1074,22 @@ app.post('/api/webhooks/agent', async (req, res) => {
       }
       const missionId = match[0].toUpperCase();
 
-      // Look up student by sender_phone
+      // Look up who is claimant (student vs provider) by sender_phone
       const student = await findRecord('students', { phone: sender_phone });
-      if (!student) {
+      const provider = await findRecord('providers', { phone: sender_phone });
+
+      if (!student && !provider) {
         return res.json({
-          reply: `⚠️ Tu número ${sender_phone} no está registrado como estudiante verificado. Regístrate en el Portal Web con tu KYC de Meru o Zelle primero.`
+          reply: `⚠️ Tu número ${sender_phone} no está registrado como estudiante o proveedor verificado. Regístrate en el Portal Web con tu KYC de Meru o Zelle primero.`
         });
       }
 
-      if (student.status !== 'verified') {
-        return res.json({ reply: '⚠️ Tu cuenta de estudiante está en espera de aprobación KYC por el administrador.' });
+      const operator = student
+        ? { type: 'student', user: student }
+        : { type: 'provider', user: provider };
+
+      if (operator.user.status !== 'verified') {
+        return res.json({ reply: '⚠️ Tu cuenta está en espera de aprobación KYC por el administrador.' });
       }
 
       const mission = await findRecord('missions', { id: missionId });
@@ -846,23 +1101,40 @@ app.post('/api/webhooks/agent', async (req, res) => {
         return res.json({ reply: `⚠️ La misión ${missionId} ya tiene otro estado o fue reclamada.` });
       }
 
+      // Rating matching constraints: missions > $100 require operator rating >= 4.0
+      const operatorRating = await getAverageRating(operator.user.id);
+      if (Number(mission.total_amount) > 100.00 && operatorRating < 4.0) {
+        return res.json({
+          reply: `⚠️ Misión de alto fondeo ($${Number(mission.total_amount).toFixed(2)}). Para tomarla necesitas una valoración mínima de 4.0 estrellas (Tu promedio actual es ${operatorRating}).`
+        });
+      }
+
       // Claim mission
-      await updateRecord('missions', mission.id, {
-        student_id: student.id,
-        student_name: student.name,
-        status: 'claimed'
-      });
+      const claimData = { status: 'claimed' };
+      if (operator.type === 'student') {
+        claimData.student_id = operator.user.id;
+        claimData.student_name = operator.user.name;
+        claimData.provider_id = null;
+        claimData.provider_name = null;
+      } else {
+        claimData.provider_id = operator.user.id;
+        claimData.provider_name = operator.user.name;
+        claimData.student_id = null;
+        claimData.student_name = null;
+      }
+
+      await updateRecord('missions', mission.id, claimData);
 
       await insertRecord('chats', {
         mission_id: mission.id,
         sender_role: 'system',
         sender_name: 'WhatsApp Bot',
-        message: `Misión tomada vía WhatsApp por el estudiante ${student.name}.`,
+        message: `Misión tomada vía WhatsApp por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}).`,
         timestamp: new Date().toISOString()
       });
 
       return res.json({
-        reply: `🚚 ¡Misión *${missionId}* asignada a ti! Tu billetera *[${student.kyc_type.toUpperCase()}] ${student.kyc_details}* ha sido vinculada.\n\nHemos notificado a los donadores internacionales para el fondeo de $${Number(mission.total_amount).toFixed(2)}.`
+        reply: `🚚 ¡Misión *${missionId}* asignada a ti! Tu billetera *[${operator.user.kyc_type.toUpperCase()}] ${operator.user.kyc_details}* ha sido vinculada.\n\nHemos notificado a los donadores internacionales para el fondeo de $${Number(mission.total_amount).toFixed(2)}.`
       });
     }
 
@@ -881,11 +1153,27 @@ app.post('/api/webhooks/agent', async (req, res) => {
       }
 
       if (mission.status !== 'claimed') {
-        return res.json({ reply: `⚠️ La misión ${missionId} debe estar tomada por un estudiante para poder ser financiada.` });
+        return res.json({ reply: `⚠️ La misión ${missionId} debe estar tomada por un operador para poder ser financiada.` });
       }
 
-      // Look up student wallet info to provide in response
-      const student = await findRecord('students', { id: mission.student_id });
+      // Look up operator details (student vs provider)
+      let operator_name = mission.student_name || mission.provider_name;
+      let kyc_type = 'N/A';
+      let kyc_details = 'N/A';
+      
+      if (mission.student_id) {
+        const student = await findRecord('students', { id: mission.student_id });
+        if (student) {
+          kyc_type = student.kyc_type;
+          kyc_details = student.kyc_details;
+        }
+      } else if (mission.provider_id) {
+        const provider = await findRecord('providers', { id: mission.provider_id });
+        if (provider) {
+          kyc_type = provider.kyc_type;
+          kyc_details = provider.kyc_details;
+        }
+      }
 
       // Fund mission (transition to funding_sent)
       await updateRecord('missions', mission.id, {
@@ -920,11 +1208,11 @@ app.post('/api/webhooks/agent', async (req, res) => {
       });
 
       return res.json({
-        reply: `💰 ¡Muchísimas gracias por tu apoyo! Has enviado los fondos para la misión *${missionId}* (comprobante registrado).\n\nEstudiante *${mission.student_name}*, por favor revisa tu cuenta *${student.kyc_type.toUpperCase()}: ${student.kyc_details}* y confirma la recepción escribiendo: *'confirmar fondos ${missionId}'*.`
+        reply: `💰 ¡Muchísimas gracias por tu apoyo! Has enviado los fondos para la misión *${missionId}* (comprobante registrado).\n\nOperador *${operator_name}*, por favor revisa tu cuenta *${kyc_type.toUpperCase()}: ${kyc_details}* y confirma la recepción escribiendo: *'confirmar fondos ${missionId}'*.`
       });
     }
 
-    // 3.5 STUDENT CONFIRM FUNDS COMMAND
+    // 3.5 OPERATOR CONFIRM FUNDS COMMAND
     // format: "confirmar fondos mis-101"
     if (text.startsWith('confirmar fondos')) {
       const match = text.match(/mis-\d+/);
@@ -934,16 +1222,20 @@ app.post('/api/webhooks/agent', async (req, res) => {
       const missionId = match[0].toUpperCase();
 
       const student = await findRecord('students', { phone: sender_phone });
-      if (!student || student.status !== 'verified') {
-        return res.json({ reply: '⚠️ No autorizado. Debe ser un estudiante de medicina verificado en el sistema.' });
+      const provider = await findRecord('providers', { phone: sender_phone });
+
+      if ((!student || student.status !== 'verified') && (!provider || provider.status !== 'verified')) {
+        return res.json({ reply: '⚠️ No autorizado. Debe ser un estudiante o proveedor de insumos verificado en el sistema.' });
       }
+
+      const operator = student ? student : provider;
 
       const mission = await findRecord('missions', { id: missionId });
       if (!mission) {
         return res.json({ reply: `⚠️ La misión ${missionId} no existe.` });
       }
 
-      if (mission.student_id !== student.id) {
+      if (mission.student_id !== operator.id && mission.provider_id !== operator.id) {
         return res.json({ reply: `⚠️ No tienes asignada la misión ${missionId}.` });
       }
 
@@ -969,12 +1261,103 @@ app.post('/api/webhooks/agent', async (req, res) => {
         mission_id: mission.id,
         sender_role: 'system',
         sender_name: 'WhatsApp Bot',
-        message: `El estudiante ${student.name} ha confirmado la recepción de los fondos vía WhatsApp/Instagram (comprobante guardado).`,
+        message: `El operador ${operator.name} ha confirmado la recepción de los fondos vía WhatsApp/Instagram (comprobante guardado).`,
         timestamp: new Date().toISOString()
       });
 
       return res.json({
-        reply: `✅ ¡Fondos confirmados para la misión *${missionId}*! Los fondos están marcados como recibidos y disponibles en Mérida. Puedes proceder a comprar los insumos y subir la factura comercial.`
+        reply: `✅ ¡Fondos confirmados para la misión *${missionId}*! Los fondos están marcados como recibidos y disponibles en Mérida. Puedes proceder a realizar el despacho y subir la factura comercial.`
+      });
+    }
+
+    // 3.8 RATING REVIEW COMMAND
+    // format: "valorar mis-101 con 5 estrellas" or "valorar mis-101 con 5 estrellas: comentario"
+    if (text.startsWith('valorar')) {
+      const matchId = text.match(/mis-\d+/);
+      const matchStars = text.match(/con\s+([1-5])\s+estrella/i);
+
+      if (!matchId || !matchStars) {
+        return res.json({ reply: '⚠️ Comando inválido. Use el formato: "valorar MIS-101 con 5 estrellas" (opcional: ": comentario").' });
+      }
+      const missionId = matchId[0].toUpperCase();
+      const stars = parseInt(matchStars[1]);
+
+      // Parse optional comment after ":"
+      let comment = '';
+      const parts = text.split(':');
+      if (parts.length > 1) {
+        comment = parts.slice(1).join(':').trim();
+      }
+
+      const mission = await findRecord('missions', { id: missionId });
+      if (!mission) {
+        return res.json({ reply: `⚠️ La misión ${missionId} no existe.` });
+      }
+
+      // Resolve reviewee and reviewer based on sender_phone
+      let reviewer_id = 'guest';
+      let reviewer_role = 'donor';
+      let reviewee_id = null;
+      let reviewee_role = null;
+
+      // Check sender phone against roles
+      const hospital = await findRecord('hospitals', { phone: sender_phone });
+      const student = await findRecord('students', { phone: sender_phone });
+      const provider = await findRecord('providers', { phone: sender_phone });
+      const donor = await findRecord('donors', { phone: sender_phone });
+
+      if (hospital) {
+        reviewer_id = hospital.id;
+        reviewer_role = 'hospital';
+        reviewee_id = mission.student_id || mission.provider_id;
+        reviewee_role = mission.student_id ? 'student' : 'provider';
+      } else if (student) {
+        reviewer_id = student.id;
+        reviewer_role = 'student';
+        reviewee_id = 'donor-seed'; // rate donor
+        reviewee_role = 'donor';
+      } else if (provider) {
+        reviewer_id = provider.id;
+        reviewer_role = 'provider';
+        reviewee_id = 'donor-seed';
+        reviewee_role = 'donor';
+      } else if (donor) {
+        reviewer_id = donor.id;
+        reviewer_role = 'donor';
+        reviewee_id = mission.student_id || mission.provider_id;
+        reviewee_role = mission.student_id ? 'student' : 'provider';
+      } else {
+        // Fallback: donor rates student
+        reviewer_id = 'donor-seed';
+        reviewer_role = 'donor';
+        reviewee_id = mission.student_id || mission.provider_id;
+        reviewee_role = mission.student_id ? 'student' : 'provider';
+      }
+
+      if (!reviewee_id) {
+        return res.json({ reply: '⚠️ La misión no tiene operador asignado para poder ser valorado.' });
+      }
+
+      await insertRecord('ratings', {
+        mission_id: mission.id,
+        reviewer_id,
+        reviewer_role,
+        reviewee_id,
+        reviewee_role,
+        stars,
+        comment
+      });
+
+      await insertRecord('chats', {
+        mission_id: mission.id,
+        sender_role: 'system',
+        sender_name: 'WhatsApp Bot',
+        message: `Misión valorada vía WhatsApp con ${stars} estrellas (por ${reviewer_role}).`,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.json({
+        reply: `⭐️ ¡Muchísimas gracias! Has valorado al *[${reviewee_role.toUpperCase()}]* de esta misión con *${stars} estrellas* y comentario: "${comment || 'Sin comentario'}"`
       });
     }
 
@@ -1027,9 +1410,11 @@ app.post('/api/webhooks/agent', async (req, res) => {
     return res.json({
       reply: `🤖 *Agente IA - CUMIS Conecta* 🩺\n\n¿Cómo puedo ayudarte? Prueba con estos comandos en español:\n\n` +
              `🏥 *Hospital*: "Crear mision Vargas con 50 gasas y 20 alcohol"\n` +
-             `🚚 *Estudiante*: "Tomar mision MIS-101"\n` +
+             `🚚 *Operador*: "Tomar mision MIS-101"\n` +
              `💰 *Donante*: "Donar a la mision MIS-101"\n` +
-             `🏥 *Hospital*: "Confirmar entrega MIS-101"`
+             `🎓 *Operador*: "Confirmar fondos MIS-101"\n` +
+             `🏥 *Hospital*: "Confirmar entrega MIS-101"\n` +
+             `⭐️ *Valorar*: "Valorar MIS-101 con 5 estrellas: Excelente servicio"`
     });
 
   } catch (error) {

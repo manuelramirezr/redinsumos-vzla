@@ -51,12 +51,28 @@ The student purchases the items, uploads the merchant invoice, delivers the supp
   - Stats dashboard updates: donations total, funds in transit, and legalised expenses.
   - The delivery image is added to the public impact gallery.
 
+### Scenario 6: Medical Supply Provider Claims and Direct Logistics
+A medical supply provider (corporate pharmacy, distributor) registers and claims a mission.
+- **Provider Registration**: Providers complete registration (KYC details for payments) and must be verified by the Admin.
+- **Claiming & Direct Delivery**: A provider claims a mission in `created` state. Once funded by the donor directly to the provider's wallet, the provider ships the supplies directly using their corporate logistics, bypassing students.
+- **Acceptance Criteria**:
+  - Mission status follows the same state machine: `created` -> `claimed` -> `funding_sent` -> `funded` -> `purchased` (provider invoice upload) -> `completed` (delivery validated by hospital).
+  - The provider is marked as the operator of the mission.
+
+### Scenario 7: Mutual Review & Rating System
+At the completion of a mission, participants can leave ratings (1 to 5 stars) and review comments for each other:
+- **Hospital Prioritization**: Missions displayed on the public dashboard are sorted dynamically. Missions requested by hospitals with a higher average rating are displayed at the top of the queue.
+- **Rating Matching Constraints**: To ensure reliability, missions requiring high funds (e.g., total referential amount **> $100.00**) can only be claimed by Students or Providers who have a verified average rating of **>= 4.0 stars**.
+- **Donor Rating**: The student or provider who receives the transfer rates the donor based on speed and communication.
+- **Chatbot / Omnichannel Integration**: Participants can rate their counterpart via SMS/WhatsApp/Instagram.
+
 ---
 
 ## Chat Agent Command Schemas (WhatsApp / Instagram Webhook)
 The omnichannel integration listens to incoming chats and performs database updates:
 1. **Hospital Create**: *"crear mision para [Hospital] con [cantidad] [insumo], [cantidad] [insumo]"*
-2. **Student Claim**: *"tomar mision [id]"*
+2. **Student/Provider Claim**: *"tomar mision [id]"*
 3. **Donor Fund**: *"donar a la mision [id]"*
-4. **Student Confirm Funds**: *"confirmar fondos [id]"*
+4. **Student/Provider Confirm Funds**: *"confirmar fondos [id]"*
 5. **Hospital Complete**: *"confirmar entrega [id]"*
+6. **Rating Command**: *"valorar [id] con [1-5] estrellas"*
