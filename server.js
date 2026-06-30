@@ -104,14 +104,14 @@ app.get('/api/dashboard-stats', async (req, res) => {
     const missions = await readTable('missions');
     const evidences = await readTable('evidences');
 
-    // Donation Total: sum of funded, purchased, completed missions
+    // Donation Total: sum of funded, purchased, completed, or funding_sent missions
     const donationTotal = missions
-      .filter(m => ['funded', 'purchased', 'completed'].includes(m.status))
+      .filter(m => ['funding_sent', 'funded', 'purchased', 'completed'].includes(m.status))
       .reduce((sum, m) => sum + Number(m.total_amount), 0);
     
-    // Funds in Transit: total amount of funded or purchased missions
+    // Funds in Transit: total amount of funding_sent, funded, or purchased missions
     const transitTotal = missions
-      .filter(m => ['funded', 'purchased'].includes(m.status))
+      .filter(m => ['funding_sent', 'funded', 'purchased'].includes(m.status))
       .reduce((sum, m) => sum + Number(m.total_amount), 0);
 
     // Legalised Expenses: completed missions
@@ -451,8 +451,8 @@ app.post('/api/missions/:id/claim', async (req, res) => {
   }
 });
 
-// Donor funds a mission
-app.post('/api/missions/:id/fund', async (req, res) => {
+// Donor funds a mission and uploads screenshot proof of transfer
+app.post('/api/missions/:id/fund', upload.single('transfer_proof'), async (req, res) => {
   try {
     const { donor_name } = req.body;
     if (!donor_name) {
@@ -468,18 +468,99 @@ app.post('/api/missions/:id/fund', async (req, res) => {
       return res.status(400).json({ error: 'La misión debe estar en estado [Tomada] para poder financiarse.' });
     }
 
-    // Update mission
+    // Update mission status to funding_sent (waiting for student confirmation)
     const updated = await updateRecord('missions', mission.id, {
       donor_name,
-      status: 'funded'
+      status: 'funding_sent'
     });
+
+    // Update/create evidence record with transfer proof
+    const evidence = await findRecord('evidences', { mission_id: mission.id });
+    if (evidence) {
+      await updateRecord('evidences', evidence.id, {
+        donor_transfer_path: req.file ? req.file.path : null,
+        uploaded_at: new Date().toISOString()
+      });
+    } else {
+      await insertRecord('evidences', {
+        mission_id: mission.id,
+        donor_transfer_path: req.file ? req.file.path : null,
+        student_receipt_path: null,
+        invoice_photo_path: null,
+        delivery_photo_path: null,
+        uploaded_at: new Date().toISOString()
+      });
+    }
 
     // Log chat message
     await insertRecord('chats', {
       mission_id: mission.id,
       sender_role: 'system',
       sender_name: 'Sistema',
-      message: `Fondos transferidos por el donador ${donor_name}. Los fondos están disponibles para el estudiante en su billetera. Estado: [Fondos Disponibles].`,
+      message: `El donador ${donor_name} ha enviado los fondos (comprobante cargado). Estado: [Comprobante Enviado]. Esperando verificación del estudiante.`,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Student confirms receipt of funds in Meru/Zelle and uploads wallet screenshot
+app.post('/api/missions/:id/confirm-receipt', upload.single('receipt_proof'), async (req, res) => {
+  try {
+    const student = await getAuthenticatedStudent(req);
+    if (!student) {
+      return res.status(401).json({ error: 'No autorizado. Requiere estudiante verificado.' });
+    }
+
+    const mission = await findRecord('missions', { id: req.params.id });
+    if (!mission) {
+      return res.status(404).json({ error: 'Misión no encontrada.' });
+    }
+
+    if (mission.student_id !== student.id) {
+      return res.status(403).json({ error: 'No tiene permisos para confirmar recepción en esta misión.' });
+    }
+
+    if (mission.status !== 'funding_sent') {
+      return res.status(400).json({ error: 'La misión no tiene comprobante de pago enviado para confirmar.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Falta capture de pantalla de recepción en billetera.' });
+    }
+
+    // Update mission status to funded (funds fully available)
+    const updated = await updateRecord('missions', mission.id, {
+      status: 'funded'
+    });
+
+    // Update evidence record
+    const evidence = await findRecord('evidences', { mission_id: mission.id });
+    if (evidence) {
+      await updateRecord('evidences', evidence.id, {
+        student_receipt_path: req.file.path,
+        uploaded_at: new Date().toISOString()
+      });
+    } else {
+      await insertRecord('evidences', {
+        mission_id: mission.id,
+        donor_transfer_path: null,
+        student_receipt_path: req.file.path,
+        invoice_photo_path: null,
+        delivery_photo_path: null,
+        uploaded_at: new Date().toISOString()
+      });
+    }
+
+    // Log chat message
+    await insertRecord('chats', {
+      mission_id: mission.id,
+      sender_role: 'system',
+      sender_name: 'Sistema',
+      message: `El estudiante ${student.name} ha verificado y confirmado la recepción de los fondos. Estado: [Fondos Disponibles]. Listo para compra.`,
       timestamp: new Date().toISOString()
     });
 
@@ -790,7 +871,7 @@ app.post('/api/webhooks/agent', async (req, res) => {
     if (text.startsWith('donar')) {
       const match = text.match(/mis-\d+/);
       if (!match) {
-        return res.json({ reply: '⚠️ Por favor indique el código de la misión a fondear (ej: "donar a la mision MIS-101").' });
+        return res.json({ reply: '⚠️ Por favor indique el código de la misión a fondeard (ej: "donar a la mision MIS-101").' });
       }
       const missionId = match[0].toUpperCase();
 
@@ -806,22 +887,94 @@ app.post('/api/webhooks/agent', async (req, res) => {
       // Look up student wallet info to provide in response
       const student = await findRecord('students', { id: mission.student_id });
 
-      // Fund mission
+      // Fund mission (transition to funding_sent)
       await updateRecord('missions', mission.id, {
         donor_name: 'Donador Omnicanal',
-        status: 'funded'
+        status: 'funding_sent'
       });
+
+      // Save mock donor transfer proof
+      const evidence = await findRecord('evidences', { mission_id: mission.id });
+      if (evidence) {
+        await updateRecord('evidences', evidence.id, {
+          donor_transfer_path: 'public/uploads/donor-transfer-mock.jpg',
+          uploaded_at: new Date().toISOString()
+        });
+      } else {
+        await insertRecord('evidences', {
+          mission_id: mission.id,
+          donor_transfer_path: 'public/uploads/donor-transfer-mock.jpg',
+          student_receipt_path: null,
+          invoice_photo_path: null,
+          delivery_photo_path: null,
+          uploaded_at: new Date().toISOString()
+        });
+      }
 
       await insertRecord('chats', {
         mission_id: mission.id,
         sender_role: 'system',
         sender_name: 'WhatsApp Bot',
-        message: `Misión financiada por un donador vía WhatsApp/Instagram.`,
+        message: `Misión financiada por un donador vía WhatsApp/Instagram (capture de envío simulado cargado).`,
         timestamp: new Date().toISOString()
       });
 
       return res.json({
-        reply: `💰 ¡Muchísimas gracias por tu apoyo! Has financiado la misión *${missionId}*.\n\nLos fondos de *$${Number(mission.total_amount).toFixed(2)}* han sido marcados como transferidos y notificados al estudiante *${mission.student_name}* en su cuenta *${student.kyc_type.toUpperCase()}: ${student.kyc_details}*.`
+        reply: `💰 ¡Muchísimas gracias por tu apoyo! Has enviado los fondos para la misión *${missionId}* (comprobante registrado).\n\nEstudiante *${mission.student_name}*, por favor revisa tu cuenta *${student.kyc_type.toUpperCase()}: ${student.kyc_details}* y confirma la recepción escribiendo: *'confirmar fondos ${missionId}'*.`
+      });
+    }
+
+    // 3.5 STUDENT CONFIRM FUNDS COMMAND
+    // format: "confirmar fondos mis-101"
+    if (text.startsWith('confirmar fondos')) {
+      const match = text.match(/mis-\d+/);
+      if (!match) {
+        return res.json({ reply: '⚠️ Por favor indique el código de la misión a confirmar (ej: "confirmar fondos MIS-101").' });
+      }
+      const missionId = match[0].toUpperCase();
+
+      const student = await findRecord('students', { phone: sender_phone });
+      if (!student || student.status !== 'verified') {
+        return res.json({ reply: '⚠️ No autorizado. Debe ser un estudiante de medicina verificado en el sistema.' });
+      }
+
+      const mission = await findRecord('missions', { id: missionId });
+      if (!mission) {
+        return res.json({ reply: `⚠️ La misión ${missionId} no existe.` });
+      }
+
+      if (mission.student_id !== student.id) {
+        return res.json({ reply: `⚠️ No tienes asignada la misión ${missionId}.` });
+      }
+
+      if (mission.status !== 'funding_sent') {
+        return res.json({ reply: `⚠️ La misión ${missionId} debe estar en estado [Comprobante Enviado] para verificar recepción.` });
+      }
+
+      // Update status to funded
+      await updateRecord('missions', mission.id, {
+        status: 'funded'
+      });
+
+      // Save mock student receipt confirmation
+      const evidence = await findRecord('evidences', { mission_id: mission.id });
+      if (evidence) {
+        await updateRecord('evidences', evidence.id, {
+          student_receipt_path: 'public/uploads/student-receipt-mock.jpg',
+          uploaded_at: new Date().toISOString()
+        });
+      }
+
+      await insertRecord('chats', {
+        mission_id: mission.id,
+        sender_role: 'system',
+        sender_name: 'WhatsApp Bot',
+        message: `El estudiante ${student.name} ha confirmado la recepción de los fondos vía WhatsApp/Instagram (comprobante guardado).`,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.json({
+        reply: `✅ ¡Fondos confirmados para la misión *${missionId}*! Los fondos están marcados como recibidos y disponibles en Mérida. Puedes proceder a comprar los insumos y subir la factura comercial.`
       });
     }
 

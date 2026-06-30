@@ -28,14 +28,21 @@ A student signs up to help and provides their wallet details (Zelle email or Mer
   - The student's Zelle/Meru information is linked to the mission.
   - Donors are notified.
 
-### Scenario 3: Global Donor Funding
-A donor from anywhere in the world sees that a student has claimed a mission and funds it.
-- **Funding**: The donor views the student's KYC info (Zelle/Meru account), transfers the money externally, and marks the payment complete (Web or text: *"Donar a la misión <ID>"*).
+### Scenario 3: Global Donor Funding & Transfer Capture
+A donor from anywhere in the world funds a mission.
+- **Transfer Proof**: The donor views the student's KYC info (Zelle/Meru account), transfers the money externally, uploads a capture/screenshot of the transfer (Web or texts: *"Donar a la misión <ID>"*).
 - **Acceptance Criteria**:
-  - Mission transitions immediately from `claimed` to `funded`.
-  - The student receives a notification that funds are available.
+  - Mission transitions from `claimed` to `funding_sent`.
+  - The student is notified that the donor claims to have sent the funds and uploaded a receipt.
 
-### Scenario 4: Supply Legalisation & Delivery Verification
+### Scenario 4: Student Receipt Verification
+The student checks their Meru or Zelle wallet and verifies the funds.
+- **Verification**: The student uploads a screenshot of their incoming wallet transaction (Web or texts: *"Confirmar fondos <ID>"*).
+- **Acceptance Criteria**:
+  - Mission transitions from `funding_sent` to `funded` (funds available).
+  - Student is cleared to purchase supplies.
+
+### Scenario 5: Supply Legalisation & Delivery Verification
 The student purchases the items, uploads the merchant invoice, delivers the supplies, and the hospital confirms receipt.
 - **Purchase**: Student uploads the commercial invoice photo (Web or WhatsApp image upload). Status transitions to `purchased`.
 - **Delivery**: The student delivers the supplies to the health center. The hospital reviews, takes a photo of the received boxes, and clicks "Confirmar Entrega" (Web or text: *"Confirmar entrega <ID>"*).
@@ -51,4 +58,5 @@ The omnichannel integration listens to incoming chats and performs database upda
 1. **Hospital Create**: *"crear mision para [Hospital] con [cantidad] [insumo], [cantidad] [insumo]"*
 2. **Student Claim**: *"tomar mision [id]"*
 3. **Donor Fund**: *"donar a la mision [id]"*
-4. **Hospital Complete**: *"confirmar entrega [id]"*
+4. **Student Confirm Funds**: *"confirmar fondos [id]"*
+5. **Hospital Complete**: *"confirmar entrega [id]"*

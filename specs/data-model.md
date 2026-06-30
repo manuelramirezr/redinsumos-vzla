@@ -39,7 +39,7 @@ The core transactional entity tracking the medical procurement request.
 * `donor_id`: string (nullable until funded)
 * `donor_name`: string (nullable)
 * `total_amount`: number
-* `status`: `'created'` | `'claimed'` | `'funded'` | `'purchased'` | `'completed'`
+* `status`: `'created'` | `'claimed'` | `'funding_sent'` | `'funded'` | `'purchased'` | `'completed'`
 * `createdAt`: timestamp
 * `updatedAt`: timestamp
 
@@ -64,6 +64,8 @@ Message feed context for both the Web detail modal and simulated omnichannel age
 Invoice and delivery proof files uploaded by students and health officials.
 * `id`: string (UUID)
 * `mission_id`: string
+* `donor_transfer_path`: string (screenshot of donor Zelle/Meru transfer)
+* `student_receipt_path`: string (screenshot of student wallet balance confirming receipt)
 * `invoice_photo_path`: string (merchant bill capture)
 * `delivery_photo_path`: string (hospital delivery confirmation capture)
 * `uploaded_at`: timestamp
@@ -77,13 +79,14 @@ Invoice and delivery proof files uploaded by students and health officials.
 stateDiagram-v2
     [*] --> created : Hospital creates mission (Web/WhatsApp)
     created --> claimed : Verified student claims mission (Zelle/Meru KYC linked)
-    claimed --> funded : Donor transfers Zelle/Meru and marks funded
+    claimed --> funding_sent : Donor transfers and uploads screenshot proof
+    funding_sent --> funded : Student uploads wallet receipt screenshot (funds available)
     funded --> purchased : Student purchases and uploads merchant invoice
     purchased --> completed : Student delivers and hospital confirms receipt with photo
     completed --> [*]
 ```
 
 ### Dashboard Calculations
-- **Donation Income**: Sum of all `missions.total_amount` where status is `funded`, `purchased`, or `completed`.
-- **Funds in Transit**: Sum of all `missions.total_amount` where status is `funded` or `purchased`.
+- **Donation Income**: Sum of all `missions.total_amount` where status is `funding_sent`, `funded`, `purchased`, or `completed`.
+- **Funds in Transit**: Sum of all `missions.total_amount` where status is `funding_sent`, `funded`, or `purchased`.
 - **Gastos Legalizados (Impact)**: Sum of all `missions.total_amount` where status is `completed`.

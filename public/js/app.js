@@ -50,6 +50,7 @@ const ALLOWED_PRODUCTS = [
 const STATUS_MAP = {
   'created': { label: 'Disponible', badgeClass: 'badge-pending' },
   'claimed': { label: 'Tomada', badgeClass: 'badge-info' },
+  'funding_sent': { label: 'Comprobante Enviado', badgeClass: 'badge-pending' },
   'funded': { label: 'Fondos Disponibles', badgeClass: 'badge-success' },
   'purchased': { label: 'Comprado', badgeClass: 'badge-info' },
   'completed': { label: 'Misión Completada', badgeClass: 'badge-success' }
@@ -593,25 +594,7 @@ async function loadDonorMissions() {
 }
 
 async function fundMission(missionId, amount) {
-  const donorNameInput = document.getElementById('donor-input-name');
-  const donorName = donorNameInput.value.trim() || 'Donador de CUMIS';
-
-  try {
-    const res = await fetch(`/api/missions/${missionId}/fund`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ donor_name: donorName })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al procesar fondeo.');
-
-    showToast(`¡Gracias! Has transferido $${amount.toFixed(2)} a ${data.student_name}.`, 'success');
-    loadDonorMissions();
-    loadDashboardStats();
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
+  openOrderModal(missionId);
 }
 
 // ==========================================
@@ -908,7 +891,17 @@ function renderModalActions(mission) {
   container.innerHTML = '';
 
   if (role === 'student' && mission.student_id === STATE.user.id) {
-    if (mission.status === 'funded') {
+    if (mission.status === 'funding_sent') {
+      container.innerHTML = `
+        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-amber)">Confirmar Recepción de Fondos (Estudiante)</h4>
+        <p style="font-size:0.85rem;color:var(--text-muted)">El donador indica que ha enviado los fondos. Por favor, revise su cuenta y suba capture del recibo:</p>
+        <form id="receipt-confirm-submit-form" style="display:flex;flex-direction:column;gap:0.75rem;">
+          <input type="file" id="receipt-confirm-photo" accept="image/*" required>
+          <button type="submit" class="btn btn-primary btn-sm">Confirmar Fondos Recibidos</button>
+        </form>
+      `;
+      document.getElementById('receipt-confirm-submit-form').addEventListener('submit', (e) => handleStudentConfirmReceiptSubmit(e, mission.id));
+    } else if (mission.status === 'funded') {
       container.innerHTML = `
         <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-cyan)">Legalizar Compra (Estudiante)</h4>
         <p style="font-size:0.85rem;color:var(--text-muted)">Fondos disponibles. Compre los insumos y suba la foto de la factura comercial:</p>
@@ -930,6 +923,8 @@ function renderModalActions(mission) {
       document.getElementById('delivery-submit-form').addEventListener('submit', (e) => handleStudentDeliverySubmit(e, mission.id));
     } else if (mission.status === 'completed') {
       container.innerHTML = `<div style="color:var(--accent-emerald);font-style:italic;font-size:0.85rem;">✓ Misión completada con éxito. ¡Gracias por tu labor!</div>`;
+    } else {
+      container.innerHTML = `<div style="font-size:0.85rem;color:var(--text-muted);">Misión en estado: <strong>${mission.status.toUpperCase()}</strong>. Esperando fondeo de donadores.</div>`;
     }
   } else if (role === 'admin') {
     container.innerHTML = `<div style="font-size:0.85rem;color:var(--text-muted);">Auditoría Administrativa. Misión en estado: <strong>${mission.status.toUpperCase()}</strong>.</div>`;
@@ -945,11 +940,94 @@ function renderModalActions(mission) {
           <div>Billetera: <strong style="text-transform:uppercase;">${mission.student_kyc_type}</strong></div>
           <div>Cuenta: <code>${mission.student_kyc_details}</code></div>
         </div>
-        <button class="btn btn-sm btn-primary btn-block" onclick="window.fundMission('${mission.id}', ${mission.total_amount})">Marcar Fondos Enviados</button>
+        <form id="donor-transfer-form" style="display:flex;flex-direction:column;gap:0.75rem;">
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.75rem;">Su Nombre / Organización</label>
+            <input type="text" id="donor-modal-name" placeholder="Ej: Donante Anónimo" required>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.75rem;">Comprobante de Transferencia (Capture)</label>
+            <input type="file" id="donor-proof-photo" accept="image/*" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Marcar Fondos Enviados</button>
+        </form>
       `;
+      setTimeout(() => {
+        const form = document.getElementById('donor-transfer-form');
+        if (form) {
+          form.addEventListener('submit', (e) => handleDonorTransferSubmit(e, mission.id));
+        }
+      }, 50);
+    } else if (mission.status === 'funding_sent') {
+      container.innerHTML = `<div style="font-size:0.85rem;color:var(--accent-amber);font-style:italic;">✓ Comprobante enviado por el donador. Esperando confirmación de recepción del estudiante.</div>`;
     } else {
       container.innerHTML = `<div style="font-size:0.85rem;color:var(--accent-emerald);font-style:italic;">✓ Misión financiada y en proceso de logística de campo.</div>`;
     }
+  }
+}
+
+async function handleDonorTransferSubmit(e, missionId) {
+  e.preventDefault();
+  const fileInput = document.getElementById('donor-proof-photo');
+  const donorName = document.getElementById('donor-modal-name').value.trim() || 'Donador de CUMIS';
+  
+  if (fileInput.files.length === 0) {
+    showToast('Seleccione un comprobante de transferencia.', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('donor_name', donorName);
+  formData.append('transfer_proof', fileInput.files[0]);
+
+  try {
+    const res = await fetch(`/api/missions/${missionId}/fund`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al procesar donación.');
+
+    showToast('¡Comprobante de envío enviado con éxito! El estudiante ha sido notificado.', 'success');
+    openOrderModal(missionId);
+    loadDashboardStats();
+    if (STATE.currentTab === 'tab-portal') {
+      switchPortalRole(STATE.currentPortalRole);
+    }
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+async function handleStudentConfirmReceiptSubmit(e, missionId) {
+  e.preventDefault();
+  const fileInput = document.getElementById('receipt-confirm-photo');
+  if (fileInput.files.length === 0) {
+    showToast('Por favor seleccione una captura de su billetera.', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('receipt_proof', fileInput.files[0]);
+
+  try {
+    const res = await fetch(`/api/missions/${missionId}/confirm-receipt`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${STATE.user.token}`
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error.');
+
+    showToast('¡Recepción de fondos confirmada! Ya puedes realizar la compra.', 'success');
+    openOrderModal(missionId);
+    loadStudentDashboard();
+  } catch (error) {
+    showToast(error.message, 'error');
   }
 }
 
