@@ -1,95 +1,54 @@
-# Feature Specification: CUMIS Conecta (Manual Pre-paid Supply Chain)
+# Feature Specification: CUMIS Conecta (Hospital & Student Omnichannel Agent Pivot)
 
 **Feature Branch**: `main`
-**Created**: 2026-06-27
+**Created**: 2026-06-29
 **Status**: Approved
 
 ## Overview
-
-"CUMIS Conecta" is a rapid-deployment marketplace platform connecting local medical suppliers in Venezuela with field logistics operators and a central administrator. The project focuses on handling manual pre-paid workflows via Zelle to avoid gateway locks and ensure immediate supplier payouts, backed by a transparency dashboard for external donors.
+CUMIS Conecta connects Venezuelan hospitals/health centers directly with students (verified field operators) and global donors. Hospitals request critical medical supplies (strictly from the 29 catalog items), students complete verification (KYC with Zelle or Meru wallets) to claim these missions, and international donors fund them directly. Communication is enabled via both the Web Portal and an omnichannel Chat Agent (simulating WhatsApp/Instagram).
 
 ---
 
 ## User Scenarios
 
-### User Story 1: Operator Registration & Administrative Verification
-An operator must register with full credentials (Name, Phone, Cédula ID, Zelle email) before they can pick up missions. The Administrator must manually verify the operator to secure the wallet flow.
+### Scenario 1: Hospital Mission Request (Web & Chat Agent)
+A hospital needs supplies (e.g. 50 solutions and 200 syringes) and registers a "Mission" on CUMIS Conecta.
+- **Web Flow**: Hospital fills a form selecting supplies from the restricted catalog.
+- **Agent Flow (WhatsApp/Instagram)**: Hospital messages the agent: *"Hola, quiero crear una misión para Hospital Vargas Mérida con 50 solución 0,9% y 100 jeringas."*
+- **Acceptance Criteria**:
+  - The system creates a new Mission record in state `created`.
+  - Items requested are validated strictly against the 29 official humanitario items.
 
-**Acceptance Criteria:**
-- Given a guest operator on the platform, when they fill out the registration form, then their account is created in a `pending` verification state.
-- Given a pending operator, they cannot accept missions or request funds until the Administrator transitions their status to `verified`.
-- Given the Admin Panel, the Admin can see all pending operators and click a `Verify Operator` button.
+### Scenario 2: Student KYC & Claiming Missions
+A student signs up to help and provides their wallet details (Zelle email or Meru wallet account).
+- **KYC Requirement**: The student must enter wallet platform (`Zelle` or `Meru`) and their account identifier. The Admin must verify their profile (`verified`).
+- **Claiming**: Once verified, the student browses missions in `created` state and clicks `Tomar Misión` (either on web or texting: *"Tomar misión <ID>"*).
+- **Acceptance Criteria**:
+  - Mission transitions to `claimed` status.
+  - The student's Zelle/Meru information is linked to the mission.
+  - Donors are notified.
 
----
+### Scenario 3: Global Donor Funding
+A donor from anywhere in the world sees that a student has claimed a mission and funds it.
+- **Funding**: The donor views the student's KYC info (Zelle/Meru account), transfers the money externally, and marks the payment complete (Web or text: *"Donar a la misión <ID>"*).
+- **Acceptance Criteria**:
+  - Mission transitions immediately from `claimed` to `funded`.
+  - The student receives a notification that funds are available.
 
-### User Story 2: Requesting Pre-paid Funds (Zelle Flow)
-A verified operator selects a mission of medical supplies to buy, and requests the Zelle advance. The order changes to `[Esperando Fondos]`.
-
-**Acceptance Criteria:**
-- Given a verified operator, when they select a mission and click `Solicitar Fondos`, then the order status becomes `pending_funds` and a disbursement record is created in `requested` state.
-- Given the Admin console, the Admin sees the active request.
-- Given the order details, both the Admin and the Operator can chat in real-time or via structured message logs to coordinate.
-
----
-
-### User Story 3: Dispatching Funds & Uploading Bank Capture
-The Admin pays the operator externally via Zelle, then marks the transaction complete on the platform, uploading a proof screenshot.
-
-**Acceptance Criteria:**
-- Given a pending disbursement, when the Admin clicks `Marcar como Fondos Enviados` (optionally uploading a payment capture), then the disbursement status updates to `sent` and the order status becomes `funds_sent`.
-- The Operator receives a system message in the order chat notifying them that funds are sent.
-
----
-
-### User Story 4: Uploading Invoices & Delivery Evidences
-The Operator buys the items, uploads a photo of the merchant invoice, delivers the supplies, and uploads a photo of the delivery at the medical center.
-
-**Acceptance Criteria:**
-- Given an order with `funds_sent`, when the Operator uploads the commercial invoice image, the order status updates to `received`.
-- Given an order with `received`, when the Operator uploads the final delivery photo, the order status updates to `completed`.
-- The transparency dashboard immediately updates to reflect the legalised funds (backed by the invoice) and shows the delivery photos in the impact gallery.
+### Scenario 4: Supply Legalisation & Delivery Verification
+The student purchases the items, uploads the merchant invoice, delivers the supplies, and the hospital confirms receipt.
+- **Purchase**: Student uploads the commercial invoice photo (Web or WhatsApp image upload). Status transitions to `purchased`.
+- **Delivery**: The student delivers the supplies to the health center. The hospital reviews, takes a photo of the received boxes, and clicks "Confirmar Entrega" (Web or text: *"Confirmar entrega <ID>"*).
+- **Acceptance Criteria**:
+  - Mission transitions to `completed`.
+  - Stats dashboard updates: donations total, funds in transit, and legalised expenses.
+  - The delivery image is added to the public impact gallery.
 
 ---
 
-### User Story 5: Public Donor Transparency Dashboard
-Donors can view financial flows (Total Donations, Funds in Transit, Legalised Expenses) and browse the visual impact gallery.
-
-**Acceptance Criteria:**
-- **Ingresos por Donación (Donation Income)**: Sum of all manually logged external donations.
-- **Fondos en Tránsito (Funds in Transit)**: Total Zelle advances sent to operators for which an invoice has not yet been uploaded.
-- **Gastos Legalizados (Legalised Expenses)**: Total cost of orders completed/received with uploaded invoices.
-- **Galería de Impacto**: Image grid displaying all successfully uploaded delivery photos.
-
----
-
-## Catalog Restrictions (The 29 Allowed Items)
-The platform strictly limits registered inventory and order items to these 29 products:
-1. Gasas estériles
-2. Povidine
-3. Suturas
-4. Vendas
-5. Alcohol
-6. Guantes estériles y no estériles
-7. Sondas
-8. Anestésicos locales
-9. Jeringas de 5, 10 y 20 ml
-10. Solución ringer lactato
-11. Solución 0,9%
-12. Bisturí
-13. Macrogoteros
-14. Analgésicos
-15. SRO (Suero de Rehidratación Oral)
-16. Antibióticos EV (Endovenosos)
-17. Adhesivo
-18. Gel de eco
-19. Venda de yeso
-20. Guata
-21. Vendas elásticas
-22. Adhesivos
-23. Compresas
-24. Guantes de trabajo
-25. Lentes
-26. Tapabocas
-27. Antihipertensivos
-28. Pastillas potabilizadoras de agua
-29. Insumos médicos generales (fallback)
+## Chat Agent Command Schemas (WhatsApp / Instagram Webhook)
+The omnichannel integration listens to incoming chats and performs database updates:
+1. **Hospital Create**: *"crear mision para [Hospital] con [cantidad] [insumo], [cantidad] [insumo]"*
+2. **Student Claim**: *"tomar mision [id]"*
+3. **Donor Fund**: *"donar a la mision [id]"*
+4. **Hospital Complete**: *"confirmar entrega [id]"*

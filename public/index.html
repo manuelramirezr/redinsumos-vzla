@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CUMIS Conecta — Plataforma de Logística e Insumos Médicos</title>
+  <title>CUMIS Conecta — Plataforma Humanitaria Omnicanal</title>
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,13 +18,14 @@
         <div class="logo-icon">🩺</div>
         <div class="logo-text">
           <h1>CUMIS <span class="highlight">Conecta</span></h1>
-          <span class="sub-text">Fondo Humanitario Adelantado</span>
+          <span class="sub-text">Omnicanal — Fondeo y Logística</span>
         </div>
       </div>
       <nav class="main-nav">
         <button class="nav-btn active" data-tab="tab-public">📊 Tablero Público</button>
         <button class="nav-btn" data-tab="tab-catalog">📦 Catálogo</button>
-        <button class="nav-btn" data-tab="tab-operator" id="nav-operator-btn">🚚 Portal Operador</button>
+        <button class="nav-btn" data-tab="tab-portal" id="nav-portal-btn">🏥 Portal CUMIS</button>
+        <button class="nav-btn" data-tab="tab-agent" id="nav-agent-btn">💬 Agente Omnicanal</button>
         <button class="nav-btn" data-tab="tab-admin" id="nav-admin-btn">🔑 Admin Console</button>
       </nav>
       <div class="user-status-area">
@@ -42,7 +43,7 @@
     <section id="tab-public" class="tab-pane active">
       <div class="dashboard-hero">
         <h2>Rendición de Cuentas en Tiempo Real</h2>
-        <p>Transparencia total sobre donaciones recibidas, fondos operativos en campo y suministros legalizados en Venezuela.</p>
+        <p>Conectando hospitales locales con estudiantes de medicina en Mérida y donadores de todo el mundo.</p>
       </div>
       
       <!-- Key Statistics -->
@@ -52,25 +53,25 @@
           <div class="stat-info">
             <h3>Ingresos por Donación</h3>
             <p class="stat-value" id="stat-donations">$0.00</p>
-            <span class="stat-desc">Donado externamente</span>
+            <span class="stat-desc">Fondeado por donadores</span>
           </div>
           <div class="card-glow"></div>
         </div>
         <div class="stat-card transit-card">
           <div class="stat-icon">🚚</div>
           <div class="stat-info">
-            <h3>Fondos en Tránsito (Campo)</h3>
+            <h3>Fondos en Campo (Estudiantes)</h3>
             <p class="stat-value" id="stat-transit">$0.00</p>
-            <span class="stat-desc">Zelle enviado, sin factura aún</span>
+            <span class="stat-desc">En proceso de compra y logística</span>
           </div>
           <div class="card-glow"></div>
         </div>
         <div class="stat-card legalised-card">
-          <div class="stat-icon">📄</div>
+          <div class="stat-icon">🏥</div>
           <div class="stat-info">
-            <h3>Gastos Legalizados</h3>
+            <h3>Gastos Legalizados (Entrega)</h3>
             <p class="stat-value" id="stat-legalised">$0.00</p>
-            <span class="stat-desc">Insumos con factura física</span>
+            <span class="stat-desc">Insumos entregados al hospital</span>
           </div>
           <div class="card-glow"></div>
         </div>
@@ -78,27 +79,25 @@
 
       <!-- Donors and Impact Gallery Grid -->
       <div class="dashboard-columns">
-        <!-- Donation History -->
+        <!-- Active Missions Feed -->
         <div class="panel list-panel">
           <div class="panel-header">
-            <h3>Donaciones Recibidas</h3>
+            <h3>Monitoreo de Misiones Activas</h3>
           </div>
           <div class="panel-body">
-            <ul id="donation-list" class="timeline-list">
-              <!-- Rendered via JS -->
-              <li class="empty-state">No se han registrado donaciones aún.</li>
-            </ul>
+            <div id="public-missions-list" class="orders-list">
+              <div class="empty-state">No hay misiones activas.</div>
+            </div>
           </div>
         </div>
 
         <!-- Impact Gallery -->
         <div class="panel gallery-panel">
           <div class="panel-header">
-            <h3>Galería de Impacto y Legalizaciones</h3>
+            <h3>Galería de Impacto Humano</h3>
           </div>
           <div class="panel-body">
             <div id="impact-gallery" class="gallery-grid">
-              <!-- Rendered via JS -->
               <div class="empty-state">No hay evidencias de entrega cargadas todavía.</div>
             </div>
           </div>
@@ -110,135 +109,192 @@
     <section id="tab-catalog" class="tab-pane">
       <div class="section-header-row">
         <div>
-          <h2>Inventario Mayorista Autorizado</h2>
-          <p>Catálogo estricto limitado a los 29 insumos médicos prioritarios del operativo humanitario.</p>
+          <h2>Inventario Humanitario de Referencia</h2>
+          <p>Catálogo cerrado de insumos médicos que los hospitales pueden solicitar.</p>
         </div>
-        <button id="add-catalog-item-btn" class="btn btn-primary hidden">+ Registrar Producto</button>
       </div>
-
-      <!-- Search & Filters -->
       <div class="filter-bar">
-        <input type="text" id="catalog-search" placeholder="Buscar por insumo o proveedor..." class="input-search">
+        <input type="text" id="catalog-search" placeholder="Buscar insumo..." class="input-search">
       </div>
-
-      <!-- Catalog Table/Grid -->
       <div class="catalog-grid" id="catalog-products-container">
-        <!-- Rendered via JS -->
+        <!-- Loaded via JS -->
       </div>
     </section>
 
-    <!-- TAB 3: OPERATOR PORTAL -->
-    <section id="tab-operator" class="tab-pane">
-      <!-- Operator Auth Wrapper (if not logged in) -->
-      <div id="operator-auth-container" class="auth-box glass-panel">
-        <div class="auth-tabs">
-          <button class="auth-tab-btn active" data-auth-mode="login">Iniciar Sesión</button>
-          <button class="auth-tab-btn" data-auth-mode="register">Registrar Operador</button>
-        </div>
-        
-        <!-- Login Form -->
-        <form id="operator-login-form" class="auth-form active">
-          <div class="form-group">
-            <label for="login-phone">Teléfono Móvil</label>
-            <input type="text" id="login-phone" placeholder="Ej: +584121234567" required>
-          </div>
-          <div class="form-group">
-            <label for="login-password">Contraseña</label>
-            <input type="password" id="login-password" placeholder="••••••••" required>
-          </div>
-          <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
-        </form>
-
-        <!-- Register Form -->
-        <form id="operator-register-form" class="auth-form">
-          <div class="form-group">
-            <label for="reg-name">Nombre Completo</label>
-            <input type="text" id="reg-name" placeholder="Ej: Carlos Pérez" required>
-          </div>
-          <div class="form-group">
-            <label for="reg-phone">Teléfono Móvil</label>
-            <input type="text" id="reg-phone" placeholder="Ej: +584121234567" required>
-          </div>
-          <div class="form-group">
-            <label for="reg-cedula">Cédula de Identidad</label>
-            <input type="text" id="reg-cedula" placeholder="Ej: V-12345678" required>
-          </div>
-          <div class="form-group">
-            <label for="reg-zelle">Correo de Zelle Personal (para adelantos)</label>
-            <input type="email" id="reg-zelle" placeholder="ejemplo@email.com" required>
-          </div>
-          <div class="form-group">
-            <label for="reg-password">Contraseña</label>
-            <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
-          </div>
-          <button type="submit" class="btn btn-primary btn-block">Solicitar Registro</button>
-        </form>
+    <!-- TAB 3: PORTAL CUMIS (Multi-Role Gateway) -->
+    <section id="tab-portal" class="tab-pane">
+      <div class="portal-role-selector">
+        <button class="role-select-btn active" data-role="hosp">🏥 Soy Hospital</button>
+        <button class="role-select-btn" data-role="stud">🎓 Soy Estudiante (Logística)</button>
+        <button class="role-select-btn" data-role="donor">🌍 Soy Donante</button>
       </div>
 
-      <!-- Operator Dashboard (if logged in) -->
-      <div id="operator-dashboard" class="operator-layout hidden">
-        <!-- Sidebar: Operator Info and Mission Creator -->
-        <div class="operator-sidebar">
-          <div class="glass-panel profile-card">
-            <h3>Mi Perfil de Logística</h3>
-            <p class="profile-name" id="operator-profile-name">-</p>
-            <div class="profile-meta">
-              <div><span>Zelle:</span> <strong id="operator-profile-zelle">-</strong></div>
-              <div><span>Teléfono:</span> <strong id="operator-profile-phone">-</strong></div>
-              <div><span>Estado:</span> <span class="badge badge-success">Verificado</span></div>
-            </div>
-          </div>
-
-          <!-- New Mission Creator Form -->
-          <div class="glass-panel order-builder-card">
-            <h3>Planificar Misión de Compra</h3>
-            <form id="order-builder-form">
+      <!-- 3A. HOSPITAL VIEW -->
+      <div id="portal-view-hosp" class="portal-subview active">
+        <div class="portal-grid">
+          <div class="glass-panel text-content">
+            <h3>Solicitar Insumos Médicos</h3>
+            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;">
+              Seleccione su centro asistencial y agregue insumos del catálogo cerrado. Los estudiantes en Mérida serán notificados para realizar la compra física una vez que un donador financie la misión.
+            </p>
+            <form id="hospital-mission-form">
               <div class="form-group">
-                <label for="order-supplier">Proveedor Mayorista</label>
-                <input type="text" id="order-supplier" placeholder="Ej: Droguería Caracas" required>
+                <label for="hosp-select">Centro de Salud / Hospital</label>
+                <select id="hosp-select" required>
+                  <!-- Loaded via JS -->
+                </select>
               </div>
-              
+
               <div class="items-builder-container">
-                <label>Suministros a Adquirir</label>
+                <label>Agregar Insumo Requerido</label>
                 <div class="builder-item-row">
-                  <select id="builder-product-select" class="form-select">
+                  <select id="hosp-builder-product-select" class="form-select">
                     <!-- Loaded via JS -->
                   </select>
-                  <input type="number" id="builder-qty" placeholder="Cant" min="1" class="qty-input">
-                  <input type="number" id="builder-price" placeholder="$ Precio" min="0.01" step="0.01" class="price-input">
-                  <button type="button" id="add-builder-item-btn" class="btn btn-icon btn-sm">➕</button>
+                  <input type="number" id="hosp-builder-qty" placeholder="Cant" min="1" class="qty-input">
+                  <button type="button" id="hosp-add-item-btn" class="btn btn-icon btn-sm">➕</button>
                 </div>
               </div>
 
-              <!-- Cart preview table -->
-              <table class="cart-table hidden" id="order-cart-table">
+              <!-- Cart table -->
+              <table class="cart-table hidden" id="hosp-cart-table">
                 <thead>
                   <tr>
                     <th>Insumo</th>
                     <th>Cant</th>
-                    <th>Subtotal</th>
+                    <th>Subtotal (Ref)</th>
                     <th></th>
                   </tr>
                 </thead>
-                <tbody id="order-cart-body">
-                </tbody>
+                <tbody id="hosp-cart-body"></tbody>
               </table>
 
-              <div class="order-total-row hidden" id="order-total-area">
-                <span>Total Requerido:</span>
-                <span class="total-value" id="order-total-value">$0.00</span>
+              <div class="order-total-row hidden" id="hosp-total-area">
+                <span>Costo Referencial Total:</span>
+                <span class="total-value" id="hosp-total-value">$0.00</span>
               </div>
 
-              <button type="submit" class="btn btn-primary btn-block hidden" id="submit-order-btn">Solicitar Adelanto Zelle</button>
+              <button type="submit" class="btn btn-primary btn-block hidden" id="hosp-submit-mission-btn">Registrar Misión Humanitaria</button>
             </form>
           </div>
+          
+          <div class="glass-panel text-content">
+            <h3>¿Cómo funciona para Hospitales?</h3>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:1rem;margin-top:1rem;font-size:0.9rem;color:var(--text-muted)">
+              <li>🏥 <strong>1. Solicitud:</strong> Registre los insumos necesarios a través de esta web o enviando un mensaje a nuestro agente de WhatsApp.</li>
+              <li>🎓 <strong>2. Asignación:</strong> Un estudiante de medicina de CUMIS toma la misión y asocia su cuenta Meru/Zelle.</li>
+              <li>🌍 <strong>3. Fondeo:</strong> Donadores internacionales transfieren el dinero directamente al estudiante.</li>
+              <li>📦 <strong>4. Entrega:</strong> El estudiante le lleva los insumos físicos al hospital. Usted valida la entrega firmando/subiendo una foto de control.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3B. STUDENT VIEW -->
+      <div id="portal-view-stud" class="portal-subview">
+        <!-- Student Auth (if not logged in) -->
+        <div id="student-auth-container" class="auth-box glass-panel">
+          <div class="auth-tabs">
+            <button class="auth-tab-btn active" data-auth-mode="login">Ingresar Estudiante</button>
+            <button class="auth-tab-btn" data-auth-mode="register">Registrar con KYC</button>
+          </div>
+          
+          <!-- Login Form -->
+          <form id="student-login-form" class="auth-form active">
+            <div class="form-group">
+              <label for="stud-login-phone">Teléfono Móvil</label>
+              <input type="text" id="stud-login-phone" placeholder="Ej: +584141234567" required>
+            </div>
+            <div class="form-group">
+              <label for="stud-login-password">Contraseña</label>
+              <input type="password" id="stud-login-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Entrar al Portal</button>
+          </form>
+
+          <!-- Register Form -->
+          <form id="student-register-form" class="auth-form">
+            <div class="form-group">
+              <label for="stud-reg-name">Nombre Completo</label>
+              <input type="text" id="stud-reg-name" placeholder="Ej: Carlos Mendoza" required>
+            </div>
+            <div class="form-group">
+              <label for="stud-reg-phone">Teléfono Móvil</label>
+              <input type="text" id="stud-reg-phone" placeholder="Ej: +584141234567" required>
+            </div>
+            <div class="form-group">
+              <label for="stud-reg-email">Correo Electrónico</label>
+              <input type="email" id="stud-reg-email" placeholder="ejemplo@correo.com" required>
+            </div>
+            <div class="form-group">
+              <label for="stud-reg-kyc-type">Billetera de Recibo (KYC)</label>
+              <select id="stud-reg-kyc-type" required>
+                <option value="meru">Meru Wallet (Recomendado en Venezuela)</option>
+                <option value="zelle">Zelle Personal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="stud-reg-kyc-details">Usuario / Correo de Billetera</label>
+              <input type="text" id="stud-reg-kyc-details" placeholder="Ej: @carlos_meru o correo Zelle" required>
+            </div>
+            <div class="form-group">
+              <label for="stud-reg-password">Contraseña</label>
+              <input type="password" id="stud-reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Enviar Registro KYC</button>
+          </form>
         </div>
 
-        <!-- Main Body: Mission List and Active Console -->
-        <div class="operator-main">
-          <div class="glass-panel active-missions-panel">
-            <h3>Mis Misiones de Campo</h3>
-            <div id="operator-missions-list" class="orders-list">
+        <!-- Student Dashboard (if logged in) -->
+        <div id="student-dashboard" class="operator-layout hidden">
+          <!-- Sidebar profile -->
+          <div class="operator-sidebar">
+            <div class="glass-panel profile-card">
+              <h3>Mi Perfil de Logística Estudiantil</h3>
+              <p class="profile-name" id="student-profile-name">-</p>
+              <div class="profile-meta">
+                <div><span>Método KYC:</span> <strong id="student-profile-kyc-type" style="text-transform:uppercase;">-</strong></div>
+                <div><span>Cuenta KYC:</span> <code id="student-profile-kyc-details">-</code></div>
+                <div><span>Teléfono:</span> <strong id="student-profile-phone">-</strong></div>
+                <div><span>Estado KYC:</span> <span class="badge badge-success">Verificado</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main lists: Available vs My missions -->
+          <div class="operator-main">
+            <div class="glass-panel">
+              <h3>Misiones de Salud Disponibles (Sin Tomar)</h3>
+              <div id="student-available-missions" class="orders-list mt-4">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+
+            <div class="glass-panel mt-4">
+              <h3>Mis Misiones Asignadas</h3>
+              <div id="student-my-missions" class="orders-list mt-4">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3C. DONOR VIEW -->
+      <div id="portal-view-donor" class="portal-subview">
+        <div class="portal-grid" style="grid-template-columns: 1fr;">
+          <div class="glass-panel">
+            <div class="section-header-row" style="margin-bottom:1rem;">
+              <div>
+                <h3>Misiones en Campo Esperando Fondeo</h3>
+                <p>Estas misiones ya fueron asumidas por estudiantes y requieren transferencia directa Meru/Zelle.</p>
+              </div>
+              <div class="form-group" style="flex-direction:row;align-items:center;margin:0;gap:0.5rem;">
+                <label for="donor-input-name" style="margin:0;">Nombre Donador:</label>
+                <input type="text" id="donor-input-name" placeholder="Ej: Donante Miami" style="width:200px;padding:0.4rem 0.8rem;">
+              </div>
+            </div>
+            <div id="donor-missions-list" class="orders-list">
               <!-- Rendered via JS -->
             </div>
           </div>
@@ -246,12 +302,81 @@
       </div>
     </section>
 
-    <!-- TAB 4: ADMIN CONSOLE -->
+    <!-- TAB 4: SMARTPHONE AGENT SIMULATOR -->
+    <section id="tab-agent" class="tab-pane">
+      <div class="agent-simulator-container">
+        <!-- Side control deck -->
+        <div class="glass-panel simulator-controls">
+          <h3>Panel de Simulación de Canal</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem;">
+            Aquí puedes simular enviar mensajes a nuestro **Agente de IA** por WhatsApp o Instagram. Elige un rol emisor y prueba las respuestas automatizadas.
+          </p>
+          
+          <div class="form-group">
+            <label for="agent-sim-persona">Persona / Número Remitente</label>
+            <select id="agent-sim-persona">
+              <option value="hosp-vargas" data-phone="+584121111111">🏥 Hospital Vargas (Tel: +584121111111)</option>
+              <option value="hosp-iahula" data-phone="+584122222222">🏥 Hospital Universitario (Tel: +584122222222)</option>
+              <option value="stud-carlos" data-phone="+584141234567">🎓 Estudiante Carlos Mendoza (Tel: +584141234567)</option>
+              <option value="donor-mia" data-phone="+13059999999">🌍 Donador Miami (Tel: +13059999999)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="agent-sim-platform">Canal de Simulación</label>
+            <select id="agent-sim-platform">
+              <option value="whatsapp">🟢 WhatsApp API</option>
+              <option value="instagram">🟣 Instagram DM Agent</option>
+            </select>
+          </div>
+
+          <div class="quick-commands-deck">
+            <label>Comandos Rápidos</label>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Crear mision Vargas con 30 gasas y 10 alcohol">🏥 Hospital: Crear misión Vargas...</button>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Tomar mision MIS-101">🎓 Estudiante: Tomar misión MIS-101</button>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Donar a la mision MIS-101">🌍 Donante: Donar a misión MIS-101</button>
+            <button class="btn btn-sm btn-outline btn-block text-left" data-cmd="Confirmar entrega MIS-101">🏥 Hospital: Confirmar entrega MIS-101</button>
+          </div>
+        </div>
+
+        <!-- Smartphone Mock Graphic -->
+        <div class="smartphone-wrapper">
+          <div class="smartphone-body">
+            <div class="phone-screen">
+              <!-- Header bar of chat -->
+              <div class="phone-chat-header">
+                <div class="phone-avatar">🤖</div>
+                <div class="phone-chat-info">
+                  <h4>Agente CUMIS Conecta</h4>
+                  <span>Online • IA Asistente</span>
+                </div>
+                <div class="phone-status-dot"></div>
+              </div>
+
+              <!-- Message Window -->
+              <div class="phone-chat-messages" id="agent-chat-messages">
+                <div class="chat-bubble bot">
+                  Hola. Soy el Agente IA de CUMIS Conecta. Puedes enviarme mensajes de WhatsApp o Instagram para interactuar con la plataforma.
+                </div>
+              </div>
+
+              <!-- Input bar -->
+              <form id="agent-chat-form" class="phone-chat-input-bar">
+                <input type="text" id="agent-chat-input" placeholder="Escribe un mensaje al bot..." required autocomplete="off">
+                <button type="submit" class="phone-send-btn">➔</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ADMIN CONSOLE -->
     <section id="tab-admin" class="tab-pane">
       <!-- Admin Password prompt (if not logged in) -->
       <div id="admin-auth-container" class="auth-box glass-panel">
-        <h3>Acceso Administrativo Privado</h3>
-        <p>Ingrese la contraseña del administrador para ver solicitudes de Zelle y autorizar operadores.</p>
+        <h3>Consola Administrativa CUMIS</h3>
+        <p>Ingrese la clave del administrador para validar KYC de estudiantes y auditar misiones.</p>
         <form id="admin-login-form">
           <div class="form-group">
             <label for="admin-passcode">Clave de Administrador</label>
@@ -261,52 +386,37 @@
         </form>
       </div>
 
-      <!-- Admin Console Layout (if logged in) -->
+      <!-- Admin Dashboard (if logged in) -->
       <div id="admin-dashboard" class="admin-layout hidden">
-        <div class="admin-grid-top">
-          <!-- Verification and Register Donation Panel -->
+        <div class="admin-grid-top" style="grid-template-columns:1fr;">
+          <!-- Verification Panel -->
           <div class="glass-panel admin-sub-panel">
-            <h3>Validación de Operadores de Campo</h3>
+            <h3>Aprobación de KYC Estudiantil</h3>
             <div class="operator-verification-list">
               <table class="data-table">
                 <thead>
                   <tr>
                     <th>Nombre</th>
-                    <th>Cédula</th>
                     <th>Teléfono</th>
-                    <th>Zelle</th>
+                    <th>Email</th>
+                    <th>Billetera KYC</th>
+                    <th>Usuario KYC</th>
                     <th>Acción</th>
                   </tr>
                 </thead>
-                <tbody id="admin-pending-operators-body">
+                <tbody id="admin-pending-students-body">
                   <!-- Rendered via JS -->
-                  <tr><td colspan="5" class="empty-state">No hay operadores en espera.</td></tr>
+                  <tr><td colspan="6" class="empty-state">No hay estudiantes en espera de verificación.</td></tr>
                 </tbody>
               </table>
             </div>
-          </div>
-
-          <!-- Log Donation Panel -->
-          <div class="glass-panel admin-sub-panel">
-            <h3>Registrar Donación Externa</h3>
-            <form id="admin-donation-form" class="inline-form">
-              <div class="form-group">
-                <label for="don-amount">Monto ($ USD)</label>
-                <input type="number" id="don-amount" placeholder="Ej: 500" required min="1">
-              </div>
-              <div class="form-group">
-                <label for="don-donor">Organización / Donante</label>
-                <input type="text" id="don-donor" placeholder="Ej: Donante Anónimo" required>
-              </div>
-              <button type="submit" class="btn btn-success align-self-end">Log Donación</button>
-            </form>
           </div>
         </div>
 
         <!-- Master Orders & Logistics Monitor -->
         <div class="glass-panel admin-main-panel mt-4">
-          <h3>Monitoreo de Misiones y Transferencias</h3>
-          <div id="admin-orders-list" class="orders-list">
+          <h3>Auditoría y Monitoreo General de Misiones</h3>
+          <div id="admin-missions-list" class="orders-list">
             <!-- Rendered via JS -->
           </div>
         </div>
@@ -315,7 +425,7 @@
   </main>
 
   <!-- ==========================================
-       MODAL Vistas Detail & Chat
+       MODAL DETAIL & WEB CHATS
   ========================================== -->
   <div id="mission-modal" class="modal hidden">
     <div class="modal-content glass-panel">
@@ -328,16 +438,17 @@
           <!-- Information Column -->
           <div class="modal-info-col">
             <div class="modal-info-group">
-              <h4>Estado Operativo</h4>
+              <h4>Estado de la Misión</h4>
               <span id="modal-status-badge" class="badge">-</span>
             </div>
             
             <div class="modal-info-group">
-              <h4>Detalle de Compra</h4>
-              <div class="detail-label">Proveedor: <strong id="modal-supplier">-</strong></div>
-              <div class="detail-label">Operador: <strong id="modal-operator">-</strong></div>
-              <div class="detail-label">Zelle de Destino: <strong id="modal-zelle">-</strong></div>
-              <div class="detail-label">Teléfono: <strong id="modal-phone">-</strong></div>
+              <h4>Ubicación y Destinatario</h4>
+              <div class="detail-label">Hospital Receptor: <strong id="modal-hospital-name">-</strong></div>
+              <div class="detail-label">Estudiante Asignado: <strong id="modal-student-name">-</strong></div>
+              <div class="detail-label">Billetera de Pago (KYC): <strong id="modal-kyc-type" style="text-transform:uppercase;">-</strong></div>
+              <div class="detail-label">Cuenta de Depósito: <code id="modal-kyc-details">-</code></div>
+              <div class="detail-label">Donante Financiador: <strong id="modal-donor-name">-</strong></div>
             </div>
 
             <div class="modal-info-group">
@@ -345,12 +456,12 @@
               <ul id="modal-items-list" class="items-list">
                 <!-- Loaded via JS -->
               </ul>
-              <div class="modal-total-display">Total Requerido: <span id="modal-total-val">$0.00</span></div>
+              <div class="modal-total-display">Fondo Requerido: <span id="modal-total-val">$0.00</span></div>
             </div>
 
-            <!-- Conditional Admin/Operator Actions -->
+            <!-- Conditional Actions Container -->
             <div class="modal-actions-group" id="modal-actions-area">
-              <!-- Rendered dynamically by JS depending on role and status -->
+              <!-- Rendered dynamically by JS -->
             </div>
           </div>
 
@@ -362,7 +473,7 @@
                 <!-- Messages rendered via JS -->
               </div>
               <form id="modal-chat-form" class="chat-form">
-                <input type="text" id="modal-chat-input" placeholder="Escribe un mensaje al operador/administrador..." required autocomplete="off">
+                <input type="text" id="modal-chat-input" placeholder="Escribe un mensaje al canal..." required autocomplete="off">
                 <button type="submit" class="btn btn-primary btn-chat-send">Enviar</button>
               </form>
             </div>
@@ -372,40 +483,9 @@
     </div>
   </div>
 
-  <!-- Modal for product registration (Supplier catalog management) -->
-  <div id="product-modal" class="modal hidden">
-    <div class="modal-content modal-sm glass-panel">
-      <div class="modal-header">
-        <h3>Registrar Insumo Mayorista</h3>
-        <button class="close-btn" id="close-product-modal-btn">&times;</button>
-      </div>
-      <form id="product-registration-form" class="modal-body">
-        <div class="form-group">
-          <label for="prod-select-name">Nombre de Insumo Autorizado (29 Opciones)</label>
-          <select id="prod-select-name" class="form-select" required>
-            <!-- Loaded via JS -->
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="prod-supplier">Nombre de Proveedor / Laboratorio</label>
-          <input type="text" id="prod-supplier" placeholder="Ej: Laboratorios Baxter" required>
-        </div>
-        <div class="form-group">
-          <label for="prod-price">Precio Referencial ($ USD)</label>
-          <input type="number" id="prod-price" placeholder="Ej: 2.50" step="0.01" min="0.01" required>
-        </div>
-        <div class="form-group">
-          <label for="prod-stock">Stock Disponible</label>
-          <input type="number" id="prod-stock" placeholder="Ej: 500" min="1" required>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">Guardar Producto</button>
-      </form>
-    </div>
-  </div>
-
   <footer class="app-footer">
     <div class="footer-container">
-      <p>&copy; 2026 CUMIS Conecta. Desarrollado para misiones de salud de alta velocidad en Venezuela.</p>
+      <p>&copy; 2026 CUMIS Conecta. Plataforma de alta velocidad e impacto humanitario para Venezuela.</p>
     </div>
   </footer>
 

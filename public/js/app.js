@@ -1,17 +1,19 @@
 // Client State Management
 const STATE = {
   currentTab: 'tab-public',
+  currentPortalRole: 'hosp',
   user: JSON.parse(localStorage.getItem('cumis_user')) || null,
   products: [],
+  hospitals: [],
   dashboardStats: null,
-  activeMissions: [],
-  pendingOperators: [],
-  cart: [],
+  missions: [],
+  pendingStudents: [],
+  hospCart: [],
   activeOrderDetails: null,
   chatIntervalId: null
 };
 
-// Restricted 29 Catalog Products
+// Restricted 29 Catalog Products (Client Reference)
 const ALLOWED_PRODUCTS = [
   "Gasas estériles",
   "Povidine",
@@ -44,11 +46,12 @@ const ALLOWED_PRODUCTS = [
   "Insumos médicos generales"
 ];
 
-// Map order state names to friendly labels & badges
+// Status maps
 const STATUS_MAP = {
-  'pending_funds': { label: 'Esperando Fondos Zelle', badgeClass: 'badge-pending' },
-  'funds_sent': { label: 'Fondos Enviados', badgeClass: 'badge-info' },
-  'received': { label: 'Factura Recibida', badgeClass: 'badge-success' },
+  'created': { label: 'Disponible', badgeClass: 'badge-pending' },
+  'claimed': { label: 'Tomada', badgeClass: 'badge-info' },
+  'funded': { label: 'Fondos Disponibles', badgeClass: 'badge-success' },
+  'purchased': { label: 'Comprado', badgeClass: 'badge-info' },
   'completed': { label: 'Misión Completada', badgeClass: 'badge-success' }
 };
 
@@ -64,18 +67,19 @@ function showToast(message, type = 'info') {
     <button style="background:transparent;border:none;color:inherit;margin-left:10px;cursor:pointer;">&times;</button>
   `;
   container.appendChild(toast);
-  
   toast.querySelector('button').addEventListener('click', () => toast.remove());
   setTimeout(() => toast.remove(), 4000);
 }
 
 // ==========================================
-// NAVIGATION & BOOTSTRAP
+// INITIALIZATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
   setupNavigation();
   initUserSession();
   loadDashboardStats();
+  loadHospitals();
+  loadProducts();
   populateDropdowns();
   setupEventListeners();
 });
@@ -83,49 +87,63 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupNavigation() {
   const navButtons = document.querySelectorAll('.nav-btn');
   navButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const targetTab = btn.getAttribute('data-tab');
       switchTab(targetTab);
+    });
+  });
+
+  // Sub-role selector in Portal
+  const roleButtons = document.querySelectorAll('.role-select-btn');
+  roleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      roleButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const targetRole = btn.getAttribute('data-role');
+      switchPortalRole(targetRole);
     });
   });
 }
 
 function switchTab(tabId) {
-  // Clear any active chat interval when moving away from a modal (or tab)
   if (STATE.chatIntervalId) {
     clearInterval(STATE.chatIntervalId);
     STATE.chatIntervalId = null;
   }
 
-  // Update nav buttons active state
   document.querySelectorAll('.nav-btn').forEach(btn => {
-    if (btn.getAttribute('data-tab') === tabId) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
   });
 
-  // Toggle panes
   document.querySelectorAll('.tab-pane').forEach(pane => {
-    if (pane.id === tabId) {
-      pane.classList.add('active');
-    } else {
-      pane.classList.remove('active');
-    }
+    pane.classList.toggle('active', pane.id === tabId);
   });
 
   STATE.currentTab = tabId;
 
-  // Trigger loads
   if (tabId === 'tab-public') {
     loadDashboardStats();
   } else if (tabId === 'tab-catalog') {
     loadProducts();
-  } else if (tabId === 'tab-operator') {
-    renderOperatorView();
+  } else if (tabId === 'tab-portal') {
+    switchPortalRole(STATE.currentPortalRole);
   } else if (tabId === 'tab-admin') {
     renderAdminView();
+  }
+}
+
+function switchPortalRole(role) {
+  STATE.currentPortalRole = role;
+  
+  // Toggle subviews
+  document.getElementById('portal-view-hosp').classList.toggle('active', role === 'hosp');
+  document.getElementById('portal-view-stud').classList.toggle('active', role === 'stud');
+  document.getElementById('portal-view-donor').classList.toggle('active', role === 'donor');
+
+  if (role === 'stud') {
+    renderStudentView();
+  } else if (role === 'donor') {
+    loadDonorMissions();
   }
 }
 
@@ -136,114 +154,25 @@ function initUserSession() {
 function updateUserDisplay() {
   const display = document.getElementById('user-display');
   const logoutBtn = document.getElementById('logout-btn');
-  const registerProdBtn = document.getElementById('add-catalog-item-btn');
 
   if (STATE.user) {
-    display.textContent = `${STATE.user.role === 'admin' ? '🔑 Admin' : '🚚 Logística'}: ${STATE.user.name}`;
+    display.textContent = `${STATE.user.role === 'admin' ? '🔑 Admin' : '🎓 Estudiante'}: ${STATE.user.name}`;
     logoutBtn.classList.remove('hidden');
-    registerProdBtn.classList.remove('hidden');
   } else {
     display.textContent = 'Invitado';
     logoutBtn.classList.add('hidden');
-    registerProdBtn.classList.add('hidden');
   }
 }
 
-// Populate product builder drop downs
 function populateDropdowns() {
-  const builderSelect = document.getElementById('builder-product-select');
-  const modalSelect = document.getElementById('prod-select-name');
-  
+  const hospBuilderSelect = document.getElementById('hosp-builder-product-select');
   const options = ALLOWED_PRODUCTS.map(prod => `<option value="${prod}">${prod}</option>`).join('');
-  
-  if (builderSelect) builderSelect.innerHTML = options;
-  if (modalSelect) modalSelect.innerHTML = options;
+  if (hospBuilderSelect) hospBuilderSelect.innerHTML = options;
 }
 
 // ==========================================
-// EVENT LISTENERS
+// API CLIENT LOADER CALLS
 // ==========================================
-function setupEventListeners() {
-  // Logout Button
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('cumis_user');
-    STATE.user = null;
-    updateUserDisplay();
-    STATE.cart = [];
-    renderCart();
-    showToast('Sesión cerrada.', 'info');
-    switchTab('tab-public');
-  });
-
-  // Supplier modal toggle
-  const registerProdBtn = document.getElementById('add-catalog-item-btn');
-  const prodModal = document.getElementById('product-modal');
-  const closeProdModalBtn = document.getElementById('close-product-modal-btn');
-  
-  registerProdBtn.addEventListener('click', () => prodModal.classList.remove('hidden'));
-  closeProdModalBtn.addEventListener('click', () => prodModal.classList.add('hidden'));
-
-  // Supplier product submission form
-  document.getElementById('product-registration-form').addEventListener('submit', handleProductRegistration);
-
-  // Operator Auth Forms Toggle
-  document.querySelectorAll('.auth-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.auth-tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      
-      const mode = btn.getAttribute('data-auth-mode');
-      if (mode === 'login') {
-        document.getElementById('operator-login-form').classList.add('active');
-        document.getElementById('operator-register-form').classList.remove('active');
-      } else {
-        document.getElementById('operator-login-form').classList.remove('active');
-        document.getElementById('operator-register-form').classList.add('active');
-      }
-    });
-  });
-
-  // Operator Login Form Submit
-  document.getElementById('operator-login-form').addEventListener('submit', handleOperatorLogin);
-
-  // Operator Register Form Submit
-  document.getElementById('operator-register-form').addEventListener('submit', handleOperatorRegister);
-
-  // Admin Login Form Submit
-  document.getElementById('admin-login-form').addEventListener('submit', handleAdminLogin);
-
-  // Admin Donation Form Submit
-  document.getElementById('admin-donation-form').addEventListener('submit', handleDonationSubmit);
-
-  // Shopping Cart items drafting
-  document.getElementById('add-builder-item-btn').addEventListener('click', addToCart);
-
-  // Order submit
-  document.getElementById('order-builder-form').addEventListener('submit', handleOrderSubmit);
-
-  // Modal closing
-  document.getElementById('close-modal-btn').addEventListener('click', () => {
-    document.getElementById('mission-modal').classList.add('hidden');
-    if (STATE.chatIntervalId) {
-      clearInterval(STATE.chatIntervalId);
-      STATE.chatIntervalId = null;
-    }
-  });
-
-  // Chat message submit
-  document.getElementById('modal-chat-form').addEventListener('submit', handleChatSubmit);
-
-  // Search filter
-  document.getElementById('catalog-search').addEventListener('input', (e) => {
-    filterProducts(e.target.value);
-  });
-}
-
-// ==========================================
-// API CLIENT CALLS
-// ==========================================
-
-// Get headers based on user auth token
 function getAuthHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (STATE.user && STATE.user.token) {
@@ -252,24 +181,35 @@ function getAuthHeaders() {
   return headers;
 }
 
-// Public dashboard loader
 async function loadDashboardStats() {
   try {
     const res = await fetch('/api/dashboard-stats');
-    if (!res.ok) throw new Error('Error al cargar estadísticas.');
+    if (!res.ok) throw new Error('Error al cargar métricas.');
     const data = await res.json();
     STATE.dashboardStats = data;
     renderDashboard();
+    
+    // Also load all missions in background to keep list fresh
+    await loadAllMissions();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-// Product catalog loader
+async function loadAllMissions() {
+  try {
+    const res = await fetch('/api/missions');
+    if (!res.ok) throw new Error('Error al cargar misiones.');
+    const data = await res.json();
+    STATE.missions = data;
+    renderPublicMissions();
+  } catch (e) {}
+}
+
 async function loadProducts() {
   try {
     const res = await fetch('/api/products');
-    if (!res.ok) throw new Error('Error al cargar el inventario.');
+    if (!res.ok) throw new Error('Error al cargar inventario.');
     const data = await res.json();
     STATE.products = data;
     renderProducts(data);
@@ -278,67 +218,411 @@ async function loadProducts() {
   }
 }
 
+async function loadHospitals() {
+  try {
+    const res = await fetch('/api/hospitals');
+    if (!res.ok) throw new Error('Error al cargar hospitales.');
+    const data = await res.json();
+    STATE.hospitals = data;
+    
+    const hospSelect = document.getElementById('hosp-select');
+    if (hospSelect) {
+      hospSelect.innerHTML = data.map(h => `<option value="${h.id}">${h.name} (${h.location})</option>`).join('');
+    }
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
 // ==========================================
-// AUTH HANDLERS
+// EVENT LISTENERS
 // ==========================================
-async function handleOperatorLogin(e) {
+function setupEventListeners() {
+  // Global Logout
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('cumis_user');
+    STATE.user = null;
+    updateUserDisplay();
+    STATE.hospCart = [];
+    renderHospCart();
+    showToast('Sesión cerrada.', 'info');
+    switchTab('tab-public');
+  });
+
+  // Student Register/Login tab toggles
+  document.querySelectorAll('#student-auth-container .auth-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#student-auth-container .auth-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      const mode = btn.getAttribute('data-auth-mode');
+      document.getElementById('student-login-form').classList.toggle('active', mode === 'login');
+      document.getElementById('student-register-form').classList.toggle('active', mode === 'register');
+    });
+  });
+
+  // Student auth submissions
+  document.getElementById('student-login-form').addEventListener('submit', handleStudentLogin);
+  document.getElementById('student-register-form').addEventListener('submit', handleStudentRegister);
+
+  // Admin auth and donations submissions
+  document.getElementById('admin-login-form').addEventListener('submit', handleAdminLogin);
+  document.getElementById('admin-donation-form').addEventListener('submit', handleDonationSubmit);
+
+  // Hospital Cart Builder Actions
+  document.getElementById('hosp-add-item-btn').addEventListener('click', addToHospCart);
+  document.getElementById('hospital-mission-form').addEventListener('submit', handleHospitalMissionSubmit);
+
+  // Close Detail Modal
+  document.getElementById('close-modal-btn').addEventListener('click', () => {
+    document.getElementById('mission-modal').classList.add('hidden');
+    if (STATE.chatIntervalId) {
+      clearInterval(STATE.chatIntervalId);
+      STATE.chatIntervalId = null;
+    }
+  });
+
+  // Chat message send
+  document.getElementById('modal-chat-form').addEventListener('submit', handleChatSubmit);
+
+  // Smartphone agent chatbot submit
+  document.getElementById('agent-chat-form').addEventListener('submit', handleAgentChatSubmit);
+
+  // Quick commands triggers inside simulator panel
+  document.querySelectorAll('.quick-commands-deck button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.getAttribute('data-cmd');
+      const input = document.getElementById('agent-chat-input');
+      input.value = cmd;
+      input.focus();
+    });
+  });
+
+  // Search filter
+  document.getElementById('catalog-search').addEventListener('input', (e) => {
+    filterProducts(e.target.value);
+  });
+}
+
+// ==========================================
+// HOSPITAL CART DRAFT SERVICES
+// ==========================================
+function addToHospCart() {
+  const prodSelect = document.getElementById('hosp-builder-product-select');
+  const qtyInput = document.getElementById('hosp-builder-qty');
+
+  const name = prodSelect.value;
+  const quantity = parseInt(qtyInput.value);
+
+  if (!name || isNaN(quantity) || quantity <= 0) {
+    showToast('Ingrese una cantidad válida.', 'error');
+    return;
+  }
+
+  // Lookup reference price from seeded items or default to 1.50
+  const prod = STATE.products.find(p => p.name === name);
+  const price = prod ? prod.price : 1.50;
+
+  const existing = STATE.hospCart.find(c => c.name === name);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    STATE.hospCart.push({ name, quantity, price });
+  }
+
+  qtyInput.value = '';
+  renderHospCart();
+}
+
+function removeHospCartItem(index) {
+  STATE.hospCart.splice(index, 1);
+  renderHospCart();
+}
+
+function renderHospCart() {
+  const table = document.getElementById('hosp-cart-table');
+  const tbody = document.getElementById('hosp-cart-body');
+  const totalArea = document.getElementById('hosp-total-area');
+  const totalVal = document.getElementById('hosp-total-value');
+  const submitBtn = document.getElementById('hosp-submit-mission-btn');
+
+  if (STATE.hospCart.length === 0) {
+    table.classList.add('hidden');
+    totalArea.classList.add('hidden');
+    submitBtn.classList.add('hidden');
+    return;
+  }
+
+  table.classList.remove('hidden');
+  totalArea.classList.remove('hidden');
+  submitBtn.classList.remove('hidden');
+
+  tbody.innerHTML = STATE.hospCart.map((c, idx) => `
+    <tr>
+      <td><strong>${c.name}</strong></td>
+      <td>${c.quantity}</td>
+      <td>$${(c.price * c.quantity).toFixed(2)}</td>
+      <td><button type="button" class="btn btn-icon btn-sm" onclick="window.removeHospItem(${idx})">🗑️</button></td>
+    </tr>
+  `).join('');
+
+  window.removeHospItem = removeHospCartItem;
+
+  const total = STATE.hospCart.reduce((sum, c) => sum + (c.price * c.quantity), 0);
+  totalVal.textContent = `$${total.toFixed(2)}`;
+}
+
+async function handleHospitalMissionSubmit(e) {
   e.preventDefault();
-  const phone = document.getElementById('login-phone').value;
-  const password = document.getElementById('login-password').value;
+  const hospital_id = document.getElementById('hosp-select').value;
+
+  if (STATE.hospCart.length === 0) {
+    showToast('Debe agregar al menos un insumo médico.', 'error');
+    return;
+  }
 
   try {
-    const res = await fetch('/api/operators/login', {
+    const res = await fetch('/api/missions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospital_id, items: STATE.hospCart })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al crear la misión.');
+
+    showToast('¡Misión humanitaria registrada con éxito! Los estudiantes han sido notificados.', 'success');
+    e.target.reset();
+    STATE.hospCart = [];
+    renderHospCart();
+    
+    // Refresh lists
+    loadDashboardStats();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+// ==========================================
+// STUDENT VIEW CONTROLLERS
+// ==========================================
+function renderStudentView() {
+  const authBox = document.getElementById('student-auth-container');
+  const dashboard = document.getElementById('student-dashboard');
+
+  if (STATE.user && STATE.user.role === 'student') {
+    authBox.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    loadStudentDashboard();
+  } else {
+    authBox.classList.remove('hidden');
+    dashboard.classList.add('hidden');
+  }
+}
+
+async function handleStudentLogin(e) {
+  e.preventDefault();
+  const phone = document.getElementById('stud-login-phone').value;
+  const password = document.getElementById('stud-login-password').value;
+
+  try {
+    const res = await fetch('/api/students/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, password })
     });
     
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Fallo de autenticación.');
+    if (!res.ok) throw new Error(data.error || 'Autenticación fallida.');
 
     STATE.user = data;
     localStorage.setItem('cumis_user', JSON.stringify(data));
     updateUserDisplay();
     showToast(`Bienvenido de nuevo, ${data.name}!`, 'success');
-    renderOperatorView();
+    renderStudentView();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-async function handleOperatorRegister(e) {
+async function handleStudentRegister(e) {
   e.preventDefault();
-  const name = document.getElementById('reg-name').value;
-  const phone = document.getElementById('reg-phone').value;
-  const zelle_email = document.getElementById('reg-zelle').value;
-  const password = document.getElementById('reg-password').value;
+  const name = document.getElementById('stud-reg-name').value;
+  const phone = document.getElementById('stud-reg-phone').value;
+  const email = document.getElementById('stud-reg-email').value;
+  const kyc_type = document.getElementById('stud-reg-kyc-type').value;
+  const kyc_details = document.getElementById('stud-reg-kyc-details').value;
+  const password = document.getElementById('stud-reg-password').value;
 
   try {
-    const res = await fetch('/api/operators/register', {
+    const res = await fetch('/api/students/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, zelle_email, password })
+      body: JSON.stringify({ name, phone, email, kyc_type, kyc_details, password })
     });
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al registrar.');
 
-    showToast('Registro solicitado. Espere a que el administrador Manu verifique su cuenta.', 'success');
+    showToast('Registro enviado. Su cuenta y KYC serán verificados por el administrador.', 'success');
     e.target.reset();
-    
-    // Switch auth tabs back to login
-    document.querySelector('.auth-tab-btn[data-auth-mode="login"]').click();
+    document.querySelector('#student-auth-container .auth-tab-btn[data-auth-mode="login"]').click();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
+async function loadStudentDashboard() {
+  if (!STATE.user) return;
+
+  document.getElementById('student-profile-name').textContent = STATE.user.name;
+  document.getElementById('student-profile-kyc-type').textContent = STATE.user.kyc_type;
+  document.getElementById('student-profile-kyc-details').textContent = STATE.user.kyc_details;
+  document.getElementById('student-profile-phone').textContent = STATE.user.phone;
+
+  // Refresh missions
+  await loadAllMissions();
+  renderStudentMissions();
+}
+
+function renderStudentMissions() {
+  const availableList = document.getElementById('student-available-missions');
+  const myMissionsList = document.getElementById('student-my-missions');
+
+  const available = STATE.missions.filter(m => m.status === 'created');
+  const mine = STATE.missions.filter(m => m.student_id === STATE.user.id);
+
+  // 1. Render Available
+  if (available.length === 0) {
+    availableList.innerHTML = '<div class="empty-state">No hay misiones disponibles. ¡Buen trabajo!</div>';
+  } else {
+    availableList.innerHTML = available.map(m => `
+      <div class="order-list-card" style="cursor:default;">
+        <div class="order-card-info" style="flex:1;">
+          <h4>Solicitado por: ${m.hospital_name}</h4>
+          <div class="order-card-meta">
+            <span>Insumos: ${m.items.map(i => `${i.quantity}x ${i.product_name}`).join(', ')}</span>
+            <span>Fecha: ${new Date(m.createdAt).toLocaleDateString('es-VE')}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div class="order-card-amount">$${Number(m.total_amount).toFixed(2)}</div>
+          <button class="btn btn-sm btn-primary" onclick="window.claimMission('${m.id}')">Tomar Misión</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 2. Render Mine
+  if (mine.length === 0) {
+    myMissionsList.innerHTML = '<div class="empty-state">No tiene misiones asignadas aún. ¡Tome una de arriba!</div>';
+  } else {
+    myMissionsList.innerHTML = mine.map(m => {
+      const status = STATUS_MAP[m.status] || { label: m.status, badgeClass: 'badge-info' };
+      return `
+        <div class="order-list-card" onclick="window.openOrderModal('${m.id}')">
+          <div class="order-card-info">
+            <h4>Misión: ${m.hospital_name}</h4>
+            <div class="order-card-meta">
+              <span>Fecha: ${new Date(m.createdAt).toLocaleDateString('es-VE')}</span>
+              <span class="badge ${status.badgeClass}">${status.label}</span>
+            </div>
+          </div>
+          <div class="order-card-amount">$${Number(m.total_amount).toFixed(2)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.claimMission = claimMission;
+  window.openOrderModal = openOrderModal;
+}
+
+async function claimMission(missionId) {
+  try {
+    const res = await fetch(`/api/missions/${missionId}/claim`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al tomar la misión.');
+
+    showToast('¡Misión tomada! Vinculando billetera KYC.', 'success');
+    loadStudentDashboard();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+// ==========================================
+// DONOR PORTAL CONTROLLERS
+// ==========================================
+async function loadDonorMissions() {
+  try {
+    await loadAllMissions();
+    const list = document.getElementById('donor-missions-list');
+    
+    // Filter missions that are claimed (assigned to student but not funded yet)
+    const pendingFondeo = STATE.missions.filter(m => m.status === 'claimed');
+
+    if (pendingFondeo.length === 0) {
+      list.innerHTML = '<div class="empty-state">No hay misiones reclamadas esperando fondeo en este momento.</div>';
+      return;
+    }
+
+    list.innerHTML = pendingFondeo.map(m => `
+      <div class="order-list-card" style="cursor:default;">
+        <div class="order-card-info" style="flex:1;">
+          <h4>Misión para: ${m.hospital_name}</h4>
+          <div class="order-card-meta">
+            <span>Estudiante: <strong>${m.student_name}</strong></span>
+            <span>Billetera KYC: <strong style="text-transform:uppercase;color:var(--accent-cyan)">[${m.student_kyc_type}]</strong> <code>${m.student_kyc_details}</code></span>
+            <span>Fecha: ${new Date(m.createdAt).toLocaleDateString('es-VE')}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1.5rem;">
+          <div class="order-card-amount" style="color:var(--accent-amber)">$${Number(m.total_amount).toFixed(2)}</div>
+          <button class="btn btn-sm btn-primary" onclick="window.fundMission('${m.id}', ${m.total_amount})">Donar Fondos</button>
+        </div>
+      </div>
+    `).join('');
+
+    window.fundMission = fundMission;
+  } catch (e) {}
+}
+
+async function fundMission(missionId, amount) {
+  const donorNameInput = document.getElementById('donor-input-name');
+  const donorName = donorNameInput.value.trim() || 'Donador de CUMIS';
+
+  try {
+    const res = await fetch(`/api/missions/${missionId}/fund`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ donor_name: donorName })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al procesar fondeo.');
+
+    showToast(`¡Gracias! Has transferido $${amount.toFixed(2)} a ${data.student_name}.`, 'success');
+    loadDonorMissions();
+    loadDashboardStats();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+// ==========================================
+// ADMIN CONSOLE CONTROLLERS
+// ==========================================
 async function handleAdminLogin(e) {
   e.preventDefault();
   const passcode = document.getElementById('admin-passcode').value;
 
   try {
-    const res = await fetch('/api/operators/login', {
+    const res = await fetch('/api/students/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: 'admin', password: passcode })
@@ -350,22 +634,20 @@ async function handleAdminLogin(e) {
     STATE.user = data;
     localStorage.setItem('cumis_user', JSON.stringify(data));
     updateUserDisplay();
-    showToast('Sesión administrativa iniciada.', 'success');
+    showToast('Consola de Administrador iniciada.', 'success');
     renderAdminView();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-// ==========================================
-// DONATION HANDLER
-// ==========================================
 async function handleDonationSubmit(e) {
   e.preventDefault();
   const amount = document.getElementById('don-amount').value;
   const donor_name = document.getElementById('don-donor').value;
 
   try {
+    // Legacy support or direct donation logs to keep dashboard metrics populated
     const res = await fetch('/api/donations', {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -373,51 +655,117 @@ async function handleDonationSubmit(e) {
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al guardar donación.');
+    if (!res.ok) throw new Error(data.error || 'Error.');
 
-    showToast('Donación registrada exitosamente.', 'success');
+    showToast('Donación registrada.', 'success');
     e.target.reset();
-    loadDashboardStats(); // Refresh donation totals
-    loadAdminDashboard(); // Refresh operator verification and orders
+    loadDashboardStats();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-// ==========================================
-// SUPPLIER PRODUCT CATALOG REGISTRATION
-// ==========================================
-async function handleProductRegistration(e) {
-  e.preventDefault();
-  const name = document.getElementById('prod-select-name').value;
-  const supplier_name = document.getElementById('prod-supplier').value;
-  const price = document.getElementById('prod-price').value;
-  const stock = document.getElementById('prod-stock').value;
+function renderAdminView() {
+  const authBox = document.getElementById('admin-auth-container');
+  const dashboard = document.getElementById('admin-dashboard');
 
+  if (STATE.user && STATE.user.role === 'admin') {
+    authBox.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    loadAdminDashboard();
+  } else {
+    authBox.classList.remove('hidden');
+    dashboard.classList.add('hidden');
+  }
+}
+
+async function loadAdminDashboard() {
+  // Load pending students KYC
   try {
-    const res = await fetch('/api/products', {
+    const res = await fetch('/api/students/pending', { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Error.');
+    const data = await res.json();
+    STATE.pendingStudents = data;
+    renderPendingStudents();
+  } catch (e) {}
+
+  // Load all missions
+  try {
+    await loadAllMissions();
+    renderAdminMissionsList();
+  } catch (e) {}
+}
+
+function renderPendingStudents() {
+  const tbody = document.getElementById('admin-pending-students-body');
+  if (STATE.pendingStudents.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay estudiantes en espera de verificación KYC.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = STATE.pendingStudents.map(stud => `
+    <tr>
+      <td><strong>${stud.name}</strong></td>
+      <td>${stud.phone}</td>
+      <td>${stud.email}</td>
+      <td><span class="badge badge-info" style="text-transform:uppercase;">${stud.kyc_type}</span></td>
+      <td><code>${stud.kyc_details}</code></td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="window.verifyStudent('${stud.id}')">Verificar KYC</button>
+      </td>
+    </tr>
+  `).join('');
+
+  window.verifyStudent = verifyStudent;
+}
+
+async function verifyStudent(id) {
+  try {
+    const res = await fetch('/api/students/verify', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ name, supplier_name, price, stock })
+      body: JSON.stringify({ id, status: 'verified' })
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al guardar insumo.');
+    if (!res.ok) throw new Error(data.error || 'Error.');
 
-    showToast('Producto del proveedor registrado en el catálogo.', 'success');
-    document.getElementById('product-modal').classList.add('hidden');
-    e.target.reset();
-    loadProducts();
+    showToast(`KYC del estudiante ${data.name} verificado.`, 'success');
+    loadAdminDashboard();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-// ==========================================
-// RENDER VIEWS
-// ==========================================
+function renderAdminMissionsList() {
+  const container = document.getElementById('admin-missions-list');
+  if (STATE.missions.length === 0) {
+    container.innerHTML = '<div class="empty-state">No hay misiones registradas.</div>';
+    return;
+  }
 
-// 1. Render Public Dashboard
+  container.innerHTML = STATE.missions.map(m => {
+    const status = STATUS_MAP[m.status] || { label: m.status, badgeClass: 'badge-info' };
+    return `
+      <div class="order-list-card" onclick="window.openOrderModal('${m.id}')">
+        <div class="order-card-info">
+          <h4>Misión a: ${m.hospital_name}</h4>
+          <div class="order-card-meta">
+            <span>Estudiante: ${m.student_name || 'Sin asignar'}</span>
+            ${m.student_kyc_details ? `<span>KYC: <code>${m.student_kyc_details}</code></span>` : ''}
+            <span>Fecha: ${new Date(m.createdAt).toLocaleDateString('es-VE')}</span>
+            <span class="badge ${status.badgeClass}">${status.label}</span>
+          </div>
+        </div>
+        <div class="order-card-amount">$${Number(m.total_amount).toFixed(2)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ==========================================
+// RENDER GENERAL VIEWS
+// ==========================================
 function renderDashboard() {
   if (!STATE.dashboardStats) return;
   const stats = STATE.dashboardStats;
@@ -426,29 +774,12 @@ function renderDashboard() {
   document.getElementById('stat-transit').textContent = `$${stats.transitTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
   document.getElementById('stat-legalised').textContent = `$${stats.legalisedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-  // Render Donations Log List
-  const donationList = document.getElementById('donation-list');
-  if (stats.donations && stats.donations.length > 0) {
-    donationList.innerHTML = stats.donations.map(don => `
-      <li class="timeline-item">
-        <div class="timeline-item-header">
-          <span>${don.date}</span>
-        </div>
-        <div class="timeline-item-body">+$${Number(don.amount).toFixed(2)}</div>
-        <div class="timeline-item-donor">${don.donor_name}</div>
-      </li>
-    `).join('');
-  } else {
-    donationList.innerHTML = '<li class="empty-state">No se han registrado donaciones aún.</li>';
-  }
-
-  // Render Impact Gallery
   const gallery = document.getElementById('impact-gallery');
   if (stats.completedMissions && stats.completedMissions.length > 0) {
     gallery.innerHTML = stats.completedMissions.map(m => `
       <div class="gallery-card">
         <div class="gallery-media">
-          <img src="${m.delivery_photo || m.invoice_photo || 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=400&q=80'}" alt="Entrega final CUMIS" class="gallery-img">
+          <img src="${m.delivery_photo || m.invoice_photo || 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=400&q=80'}" alt="Entrega CUMIS" class="gallery-img">
           <span class="gallery-badge" style="background-color: var(--accent-emerald)">✓ ENTREGADO</span>
         </div>
         <div class="gallery-content">
@@ -469,11 +800,35 @@ function renderDashboard() {
   }
 }
 
-// 2. Render Products Catalog
+function renderPublicMissions() {
+  const list = document.getElementById('public-missions-list');
+  if (STATE.missions.length === 0) {
+    list.innerHTML = '<div class="empty-state">No hay misiones activas en este momento.</div>';
+    return;
+  }
+
+  list.innerHTML = STATE.missions.map(m => {
+    const status = STATUS_MAP[m.status] || { label: m.status, badgeClass: 'badge-info' };
+    return `
+      <div class="order-list-card" onclick="window.openOrderModal('${m.id}')">
+        <div class="order-card-info">
+          <h4>Misión: ${m.hospital_name}</h4>
+          <div class="order-card-meta">
+            <span>Monto: $${Number(m.total_amount).toFixed(2)}</span>
+            <span>Estudiante: ${m.student_name || 'Buscando estudiante'}</span>
+            <span class="badge ${status.badgeClass}">${status.label}</span>
+          </div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-dim);">${new Date(m.createdAt).toLocaleDateString('es-VE')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderProducts(products) {
   const container = document.getElementById('catalog-products-container');
   if (products.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1">No hay productos en inventario.</div>';
+    container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1">No hay productos en catálogo.</div>';
     return;
   }
 
@@ -482,18 +837,13 @@ function renderProducts(products) {
       <div class="catalog-card-header">
         <div>
           <h4 class="catalog-item-name">${prod.name}</h4>
-          <span class="catalog-supplier">Por: ${prod.supplier_name}</span>
+          <span class="catalog-supplier">Referencia: ${prod.supplier_name}</span>
         </div>
-        <span class="badge badge-info">Catálogo</span>
       </div>
       <div class="catalog-stats">
         <div>
-          <label>Precio Mayorista</label>
+          <label>Costo Unitario</label>
           <div class="catalog-price-val">$${Number(prod.price).toFixed(2)}</div>
-        </div>
-        <div style="text-align: right">
-          <label>Stock Disponible</label>
-          <div class="catalog-stock-val" style="color: ${prod.stock > 100 ? 'var(--text-main)' : 'var(--accent-amber)'}">${prod.stock} unids</div>
         </div>
       </div>
     </div>
@@ -501,509 +851,169 @@ function renderProducts(products) {
 }
 
 function filterProducts(query) {
-  const normalizedQuery = query.toLowerCase().trim();
-  if (!normalizedQuery) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
     renderProducts(STATE.products);
     return;
   }
-  const filtered = STATE.products.filter(p => 
-    p.name.toLowerCase().includes(normalizedQuery) || 
-    p.supplier_name.toLowerCase().includes(normalizedQuery)
-  );
-  renderProducts(filtered);
+  renderProducts(STATE.products.filter(p => p.name.toLowerCase().includes(q)));
 }
 
 // ==========================================
-// OPERATOR PORTAL CORE LOGIC
+// DETAIL MODAL & DYNAMIC ACTIONS
 // ==========================================
-function renderOperatorView() {
-  const authBox = document.getElementById('operator-auth-container');
-  const dashboard = document.getElementById('operator-dashboard');
-
-  if (STATE.user && STATE.user.role === 'operator') {
-    authBox.classList.add('hidden');
-    dashboard.classList.remove('hidden');
-    loadOperatorDashboard();
-  } else {
-    authBox.classList.remove('hidden');
-    dashboard.classList.add('hidden');
-  }
-}
-
-async function loadOperatorDashboard() {
-  if (!STATE.user) return;
-  
-  // Set profile info
-  document.getElementById('operator-profile-name').textContent = STATE.user.name;
-  document.getElementById('operator-profile-zelle').textContent = STATE.user.zelle_email;
-  document.getElementById('operator-profile-phone').textContent = STATE.user.phone;
-
-  // Load operator's own active/completed missions
+async function openOrderModal(missionId) {
   try {
-    const res = await fetch('/api/orders', { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Error al cargar órdenes.');
-    const data = await res.json();
-    STATE.activeMissions = data;
-    renderOperatorMissions();
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
+    const res = await fetch(`/api/missions/${missionId}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Error.');
+    const mission = await res.json();
+    STATE.activeOrderDetails = mission;
 
-// Operator dynamic cart builder
-function addToCart() {
-  const prodSelect = document.getElementById('builder-product-select');
-  const qtyInput = document.getElementById('builder-qty');
-  const priceInput = document.getElementById('builder-price');
+    document.getElementById('modal-mission-title').textContent = `Misión: ${mission.id}`;
+    document.getElementById('modal-hospital-name').textContent = mission.hospital_name;
+    document.getElementById('modal-student-name').textContent = mission.student_name || 'Sin asignar';
+    document.getElementById('modal-kyc-type').textContent = mission.student_kyc_type || 'N/A';
+    document.getElementById('modal-kyc-details').textContent = mission.student_kyc_details || 'N/A';
+    document.getElementById('modal-donor-name').textContent = mission.donor_name || 'Sin asignar';
+    document.getElementById('modal-total-val').textContent = `$${Number(mission.total_amount).toFixed(2)}`;
 
-  const name = prodSelect.value;
-  const quantity = parseInt(qtyInput.value);
-  const price = parseFloat(priceInput.value);
-
-  if (!name || isNaN(quantity) || quantity <= 0 || isNaN(price) || price <= 0) {
-    showToast('Ingrese cantidad y precio válidos.', 'error');
-    return;
-  }
-
-  // Add or update quantity in cart draft
-  const existing = STATE.cart.find(c => c.name === name);
-  if (existing) {
-    existing.quantity += quantity;
-    existing.price = price; // update with latest price input
-  } else {
-    STATE.cart.push({ name, quantity, price });
-  }
-
-  // Clear inputs
-  qtyInput.value = '';
-  priceInput.value = '';
-
-  renderCart();
-}
-
-function removeFromCart(index) {
-  STATE.cart.splice(index, 1);
-  renderCart();
-}
-
-function renderCart() {
-  const table = document.getElementById('order-cart-table');
-  const tbody = document.getElementById('order-cart-body');
-  const totalArea = document.getElementById('order-total-area');
-  const totalVal = document.getElementById('order-total-value');
-  const submitBtn = document.getElementById('submit-order-btn');
-
-  if (STATE.cart.length === 0) {
-    table.classList.add('hidden');
-    totalArea.classList.add('hidden');
-    submitBtn.classList.add('hidden');
-    return;
-  }
-
-  table.classList.remove('hidden');
-  totalArea.classList.remove('hidden');
-  submitBtn.classList.remove('hidden');
-
-  tbody.innerHTML = STATE.cart.map((c, idx) => `
-    <tr>
-      <td><strong>${c.name}</strong></td>
-      <td>${c.quantity}</td>
-      <td>$${(c.price * c.quantity).toFixed(2)}</td>
-      <td><button type="button" class="btn btn-icon btn-sm" onclick="window.removeCartItem(${idx})">🗑️</button></td>
-    </tr>
-  `).join('');
-
-  // Attach global shortcut for deletions
-  window.removeCartItem = removeFromCart;
-
-  const total = STATE.cart.reduce((sum, c) => sum + (c.price * c.quantity), 0);
-  totalVal.textContent = `$${total.toFixed(2)}`;
-}
-
-async function handleOrderSubmit(e) {
-  e.preventDefault();
-  const supplier_name = document.getElementById('order-supplier').value;
-
-  if (STATE.cart.length === 0) {
-    showToast('Debe agregar al menos un insumo médico.', 'error');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ supplier_name, items: STATE.cart })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al enviar orden.');
-
-    showToast('Solicitud de adelanto de fondos enviada exitosamente!', 'success');
-    
-    // Clear draft form & cart
-    e.target.reset();
-    STATE.cart = [];
-    renderCart();
-    
-    // Refresh log list
-    loadOperatorDashboard();
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-// Render missions in the Operator's list view
-function renderOperatorMissions() {
-  const list = document.getElementById('operator-missions-list');
-  if (STATE.activeMissions.length === 0) {
-    list.innerHTML = '<div class="empty-state">No tiene misiones registradas. ¡Planifique una a la izquierda!</div>';
-    return;
-  }
-
-  list.innerHTML = STATE.activeMissions.map(m => {
-    const status = STATUS_MAP[m.status] || { label: m.status, badgeClass: 'badge-info' };
-    const date = new Date(m.createdAt).toLocaleDateString('es-VE');
-    return `
-      <div class="order-list-card" onclick="window.openOrderModal('${m.id}')">
-        <div class="order-card-info">
-          <h4>Misión a: ${m.supplier_name}</h4>
-          <div class="order-card-meta">
-            <span>Fecha: ${date}</span>
-            <span class="badge ${status.badgeClass}">${status.label}</span>
-          </div>
-        </div>
-        <div class="order-card-amount">$${Number(m.total_amount).toFixed(2)}</div>
-      </div>
-    `;
-  }).join('');
-  
-  window.openOrderModal = openOrderModal;
-}
-
-// ==========================================
-// ADMIN CONSOLE CORE LOGIC
-// ==========================================
-function renderAdminView() {
-  const authBox = document.getElementById('admin-auth-container');
-  const dashboard = document.getElementById('admin-dashboard');
-
-  if (STATE.user && STATE.user.role === 'admin') {
-    authBox.classList.add('hidden');
-    dashboard.classList.remove('hidden');
-    loadAdminDashboard();
-  } else {
-    authBox.classList.remove('hidden');
-    dashboard.classList.add('hidden');
-  }
-}
-
-async function loadAdminDashboard() {
-  // Load Pending verification operators
-  try {
-    const res = await fetch('/api/operators/pending', { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Error al cargar operadores pendientes.');
-    const data = await res.json();
-    STATE.pendingOperators = data;
-    renderPendingOperators();
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-
-  // Load All Active orders
-  try {
-    const res = await fetch('/api/orders', { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Error al cargar órdenes.');
-    const data = await res.json();
-    renderAdminOrders(data);
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-function renderPendingOperators() {
-  const tbody = document.getElementById('admin-pending-operators-body');
-  if (STATE.pendingOperators.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay operadores en espera.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = STATE.pendingOperators.map(op => `
-    <tr>
-      <td><strong>${op.name}</strong></td>
-      <td>${op.cedula || 'N/A'}</td>
-      <td>${op.phone}</td>
-      <td><code>${op.zelle_email}</code></td>
-      <td>
-        <button class="btn btn-sm btn-primary" onclick="window.verifyOperator('${op.id}', 'verified')">Validar</button>
-      </td>
-    </tr>
-  `).join('');
-
-  window.verifyOperator = verifyOperator;
-}
-
-async function verifyOperator(id, status) {
-  try {
-    const res = await fetch('/api/operators/verify', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ id, status })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al validar operador.');
-
-    showToast(`Operador ${data.name} validado exitosamente.`, 'success');
-    loadAdminDashboard();
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-function renderAdminOrders(orders) {
-  const container = document.getElementById('admin-orders-list');
-  if (orders.length === 0) {
-    container.innerHTML = '<div class="empty-state">No hay registros de compras/misiones en el sistema.</div>';
-    return;
-  }
-
-  container.innerHTML = orders.map(m => {
-    const status = STATUS_MAP[m.status] || { label: m.status, badgeClass: 'badge-info' };
-    const date = new Date(m.createdAt).toLocaleDateString('es-VE');
-    return `
-      <div class="order-list-card" onclick="window.openOrderModal('${m.id}')">
-        <div class="order-card-info">
-          <h4>Misión a: ${m.supplier_name} (Operador: ${m.operator_name})</h4>
-          <div class="order-card-meta">
-            <span>Fecha: ${date}</span>
-            <span>Tel: ${m.operator_phone}</span>
-            <span>Zelle: <code>${m.operator_zelle}</code></span>
-            <span class="badge ${status.badgeClass}">${status.label}</span>
-          </div>
-        </div>
-        <div class="order-card-amount">$${Number(m.total_amount).toFixed(2)}</div>
-      </div>
-    `;
-  }).join('');
-}
-
-// ==========================================
-// DETAILS MODAL & LIVE CHAT VISTA
-// ==========================================
-async function openOrderModal(orderId) {
-  try {
-    const res = await fetch(`/api/orders/${orderId}`, { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Error al cargar detalle de misión.');
-    const order = await res.json();
-    STATE.activeOrderDetails = order;
-
-    // Load static values
-    document.getElementById('modal-mission-title').textContent = `Misión a: ${order.supplier_name}`;
-    document.getElementById('modal-supplier').textContent = order.supplier_name;
-    document.getElementById('modal-operator').textContent = order.operator ? order.operator.name : 'N/A';
-    document.getElementById('modal-zelle').textContent = order.operator ? order.operator.zelle_email : 'N/A';
-    document.getElementById('modal-phone').textContent = order.operator ? order.operator.phone : 'N/A';
-    document.getElementById('modal-total-val').textContent = `$${Number(order.total_amount).toFixed(2)}`;
-
-    // Render badge
-    const status = STATUS_MAP[order.status] || { label: order.status, badgeClass: 'badge-info' };
+    const status = STATUS_MAP[mission.status] || { label: mission.status, badgeClass: 'badge-info' };
     const badge = document.getElementById('modal-status-badge');
     badge.textContent = status.label;
     badge.className = `badge ${status.badgeClass}`;
 
-    // Render items list
-    const itemsList = document.getElementById('modal-items-list');
-    itemsList.innerHTML = order.items.map(item => `
+    document.getElementById('modal-items-list').innerHTML = mission.items.map(item => `
       <li>
         <span>${item.product_name} x ${item.quantity}</span>
         <span>$${(item.price * item.quantity).toFixed(2)}</span>
       </li>
     `).join('');
 
-    // Dynamic actions box based on role and status
-    renderModalActions(order);
+    renderModalActions(mission);
+    renderChatMessages(mission.chats);
 
-    // Initial render of chat and start polling
-    renderChatMessages(order.chats);
-    
-    // Clear old interval
     if (STATE.chatIntervalId) clearInterval(STATE.chatIntervalId);
-    
-    // Start polling every 3.5s
-    STATE.chatIntervalId = setInterval(() => pollChat(order.id), 3500);
+    STATE.chatIntervalId = setInterval(() => pollChat(mission.id), 3500);
 
-    // Show modal
     document.getElementById('mission-modal').classList.remove('hidden');
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-function renderModalActions(order) {
-  const actionsArea = document.getElementById('modal-actions-area');
+function renderModalActions(mission) {
+  const container = document.getElementById('modal-actions-area');
   const role = STATE.user ? STATE.user.role : 'guest';
 
-  // Clear container
-  actionsArea.innerHTML = '';
+  container.innerHTML = '';
 
-  if (role === 'admin') {
-    if (order.status === 'pending_funds') {
-      actionsArea.innerHTML = `
-        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-amber)">Panel de Pago Externa (Admin)</h4>
-        <p style="font-size:0.85rem;color:var(--text-muted)">Haga la transferencia Zelle de <strong>$${Number(order.total_amount).toFixed(2)}</strong> a <code>${order.operator.zelle_email}</code> en su banco. Luego regístrelo aquí:</p>
-        <form id="disburse-submit-form" style="display:flex;flex-direction:column;gap:0.75rem;">
-          <div class="form-group" style="margin:0;">
-            <label style="font-size:0.75rem;">Comprobante de Pago (Opcional Capture)</label>
-            <input type="file" id="disburse-capture" accept="image/*">
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm">Marcar Fondos Enviados</button>
-        </form>
-      `;
-      // Attach form listener
-      document.getElementById('disburse-submit-form').addEventListener('submit', (e) => handleAdminDisburse(e, order.id));
-    } else if (order.status === 'funds_sent') {
-      actionsArea.innerHTML = `<div style="font-size:0.85rem;font-style:italic;color:var(--accent-amber)">✓ Fondos transferidos. Esperando que el operador recoja y cargue factura del proveedor.</div>`;
-    } else if (order.status === 'received') {
-      actionsArea.innerHTML = `<div style="font-size:0.85rem;font-style:italic;color:var(--accent-cyan)">✓ Factura verificada. Esperando que el operador entregue los insumos en el centro médico.</div>`;
-    } else if (order.status === 'completed') {
-      actionsArea.innerHTML = `<div style="font-size:0.85rem;font-style:italic;color:var(--accent-emerald)">✓ Misión completada con éxito. Gastos legalizados.</div>`;
-    }
-  } else if (role === 'operator') {
-    if (order.status === 'pending_funds') {
-      actionsArea.innerHTML = `<div style="font-size:0.85rem;font-style:italic;color:var(--accent-amber)">Aguardando por la transferencia Zelle del Administrador...</div>`;
-    } else if (order.status === 'funds_sent') {
-      actionsArea.innerHTML = `
-        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-cyan)">Legalizar Compra</h4>
-        <p style="font-size:0.85rem;color:var(--text-muted)">Una vez que retires los insumos y le pagues al proveedor, **toma foto a la factura comercial** y súbela aquí:</p>
+  if (role === 'student' && mission.student_id === STATE.user.id) {
+    if (mission.status === 'funded') {
+      container.innerHTML = `
+        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-cyan)">Legalizar Compra (Estudiante)</h4>
+        <p style="font-size:0.85rem;color:var(--text-muted)">Fondos disponibles. Compre los insumos y suba la foto de la factura comercial:</p>
         <form id="invoice-submit-form" style="display:flex;flex-direction:column;gap:0.75rem;">
           <input type="file" id="invoice-photo" accept="image/*" required>
-          <button type="submit" class="btn btn-success btn-sm">Cargar Factura Comercial</button>
+          <button type="submit" class="btn btn-success btn-sm">Cargar Factura</button>
         </form>
       `;
-      document.getElementById('invoice-submit-form').addEventListener('submit', (e) => handleOperatorInvoice(e, order.id));
-    } else if (order.status === 'received') {
-      actionsArea.innerHTML = `
-        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-emerald)">Finalizar Entrega</h4>
-        <p style="font-size:0.85rem;color:var(--text-muted)">Para completar la misión, sube la foto de la entrega física de los insumos en Mérida:</p>
+      document.getElementById('invoice-submit-form').addEventListener('submit', (e) => handleStudentInvoiceSubmit(e, mission.id));
+    } else if (mission.status === 'purchased') {
+      container.innerHTML = `
+        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-emerald)">Completar Despacho en Hospital</h4>
+        <p style="font-size:0.85rem;color:var(--text-muted)">Lleve los insumos al centro asistencial y suba la foto de entrega firmada por el director/encargado:</p>
         <form id="delivery-submit-form" style="display:flex;flex-direction:column;gap:0.75rem;">
           <input type="file" id="delivery-photo" accept="image/*" required>
           <button type="submit" class="btn btn-primary btn-sm">Completar Entrega</button>
         </form>
       `;
-      document.getElementById('delivery-submit-form').addEventListener('submit', (e) => handleOperatorDelivery(e, order.id));
-    } else if (order.status === 'completed') {
-      actionsArea.innerHTML = `<div style="font-size:0.85rem;font-style:italic;color:var(--accent-emerald)">✓ Misión finalizada con éxito. Gracias por el apoyo.</div>`;
+      document.getElementById('delivery-submit-form').addEventListener('submit', (e) => handleStudentDeliverySubmit(e, mission.id));
+    } else if (mission.status === 'completed') {
+      container.innerHTML = `<div style="color:var(--accent-emerald);font-style:italic;font-size:0.85rem;">✓ Misión completada con éxito. ¡Gracias por tu labor!</div>`;
     }
+  } else if (role === 'admin') {
+    container.innerHTML = `<div style="font-size:0.85rem;color:var(--text-muted);">Auditoría Administrativa. Misión en estado: <strong>${mission.status.toUpperCase()}</strong>.</div>`;
   } else {
-    actionsArea.innerHTML = `<div style="font-size:0.85rem;color:var(--text-dim)">Entre en su portal para ver sus opciones.</div>`;
+    // Guest or Donor view inside modal
+    if (mission.status === 'created') {
+      container.innerHTML = `<div style="font-size:0.85rem;color:var(--accent-amber);">Esperando que un estudiante de medicina asigne su billetera KYC a esta misión.</div>`;
+    } else if (mission.status === 'claimed') {
+      container.innerHTML = `
+        <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-amber);">Fondeo Humanitario Directo</h4>
+        <p style="font-size:0.85rem;color:var(--text-muted);">Transfiera <strong>$${Number(mission.total_amount).toFixed(2)}</strong> a la cuenta del estudiante:</p>
+        <div style="background-color:rgba(0,0,0,0.2);padding:0.5rem;border-radius:6px;font-size:0.85rem;margin-bottom:0.5rem;">
+          <div>Billetera: <strong style="text-transform:uppercase;">${mission.student_kyc_type}</strong></div>
+          <div>Cuenta: <code>${mission.student_kyc_details}</code></div>
+        </div>
+        <button class="btn btn-sm btn-primary btn-block" onclick="window.fundMission('${mission.id}', ${mission.total_amount})">Marcar Fondos Enviados</button>
+      `;
+    } else {
+      container.innerHTML = `<div style="font-size:0.85rem;color:var(--accent-emerald);font-style:italic;">✓ Misión financiada y en proceso de logística de campo.</div>`;
+    }
   }
 }
 
-// ------------------------------------------
-// MODAL ACTIONS HANDLERS (ADMIN / OPERATOR FILE POSTS)
-// ------------------------------------------
-async function handleAdminDisburse(e, orderId) {
-  e.preventDefault();
-  const fileInput = document.getElementById('disburse-capture');
-  const formData = new FormData();
-  
-  if (fileInput.files.length > 0) {
-    formData.append('receipt', fileInput.files[0]);
-  }
-
-  try {
-    const res = await fetch(`/api/orders/${orderId}/disburse`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${STATE.user.token}`
-      },
-      body: formData
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al autorizar desembolso.');
-
-    showToast('Fondos marcados como enviados.', 'success');
-    openOrderModal(orderId); // Refresh modal view
-    loadAdminDashboard(); // Refresh background
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function handleOperatorInvoice(e, orderId) {
+async function handleStudentInvoiceSubmit(e, missionId) {
   e.preventDefault();
   const fileInput = document.getElementById('invoice-photo');
-  if (fileInput.files.length === 0) {
-    showToast('Seleccione una foto de factura.', 'error');
-    return;
-  }
+  if (fileInput.files.length === 0) return;
 
   const formData = new FormData();
   formData.append('invoice', fileInput.files[0]);
 
   try {
-    const res = await fetch(`/api/orders/${orderId}/invoice`, {
+    const res = await fetch(`/api/missions/${missionId}/invoice`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${STATE.user.token}`
-      },
+      headers: { 'Authorization': `Bearer ${STATE.user.token}` },
       body: formData
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al cargar factura.');
+    if (!res.ok) throw new Error(data.error || 'Error.');
 
-    showToast('Factura cargada correctamente. Estado actualizado.', 'success');
-    openOrderModal(orderId);
-    loadOperatorDashboard();
+    showToast('Factura legalizada.', 'success');
+    openOrderModal(missionId);
+    loadStudentDashboard();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-async function handleOperatorDelivery(e, orderId) {
+async function handleStudentDeliverySubmit(e, missionId) {
   e.preventDefault();
   const fileInput = document.getElementById('delivery-photo');
-  if (fileInput.files.length === 0) {
-    showToast('Seleccione una foto de entrega.', 'error');
-    return;
-  }
+  if (fileInput.files.length === 0) return;
 
   const formData = new FormData();
   formData.append('delivery', fileInput.files[0]);
 
   try {
-    const res = await fetch(`/api/orders/${orderId}/deliver`, {
+    const res = await fetch(`/api/missions/${missionId}/verify-delivery`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${STATE.user.token}`
-      },
+      headers: { 'Authorization': `Bearer ${STATE.user.token}` },
       body: formData
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al registrar entrega.');
+    if (!res.ok) throw new Error(data.error || 'Error.');
 
-    showToast('Evidencia de entrega guardada. ¡Misión completada!', 'success');
-    openOrderModal(orderId);
-    loadOperatorDashboard();
+    showToast('¡Entrega del hospital registrada y verificada!', 'success');
+    openOrderModal(missionId);
+    loadStudentDashboard();
+    loadDashboardStats();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
 // ==========================================
-// CHAT SERVICES
+// CHAT ROOMS POLLING
 // ==========================================
-async function pollChat(orderId) {
+async function pollChat(missionId) {
   try {
-    const res = await fetch(`/api/orders/${orderId}/chats`, { headers: getAuthHeaders() });
-    if (!res.ok) return; // fail silently during polling
+    const res = await fetch(`/api/missions/${missionId}/chats`, { headers: getAuthHeaders() });
+    if (!res.ok) return;
     const chats = await res.json();
-    
-    // Check if new message added to avoid unnecessary scrolls
     if (!STATE.activeOrderDetails || STATE.activeOrderDetails.chats.length !== chats.length) {
       STATE.activeOrderDetails.chats = chats;
       renderChatMessages(chats);
@@ -1012,18 +1022,18 @@ async function pollChat(orderId) {
 }
 
 function renderChatMessages(chats) {
-  const chatBox = document.getElementById('modal-chat-messages');
+  const container = document.getElementById('modal-chat-messages');
   if (!chats || chats.length === 0) {
-    chatBox.innerHTML = '<div style="font-size:0.85rem;color:var(--text-dim);text-align:center;font-style:italic;margin-top:2rem;">Canal de comunicación seguro iniciado. Escriba un mensaje a continuación para coordinar.</div>';
+    container.innerHTML = '<div style="font-size:0.8rem;font-style:italic;color:var(--text-dim);text-align:center;margin-top:2rem;">Canal seguro de coordinación. Envíe un mensaje abajo para acordar detalles.</div>';
     return;
   }
 
-  chatBox.innerHTML = chats.map(c => {
-    const time = new Date(c.timestamp).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+  container.innerHTML = chats.map(c => {
     let roleClass = 'chat-msg-operator';
     if (c.sender_role === 'admin') roleClass = 'chat-msg-admin';
     if (c.sender_role === 'system') roleClass = 'chat-msg-system';
-
+    
+    const time = new Date(c.timestamp).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
     return `
       <div class="chat-msg ${roleClass}">
         ${c.sender_role !== 'system' ? `<div class="chat-msg-sender">${c.sender_name}</div>` : ''}
@@ -1032,9 +1042,7 @@ function renderChatMessages(chats) {
       </div>
     `;
   }).join('');
-
-  // Auto scroll to bottom
-  chatBox.scrollTop = chatBox.scrollHeight;
+  container.scrollTop = container.scrollHeight;
 }
 
 async function handleChatSubmit(e) {
@@ -1044,19 +1052,73 @@ async function handleChatSubmit(e) {
   if (!message || !STATE.activeOrderDetails) return;
 
   try {
-    const res = await fetch(`/api/orders/${STATE.activeOrderDetails.id}/chats`, {
+    const res = await fetch(`/api/missions/${STATE.activeOrderDetails.id}/chats`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ message })
+      body: JSON.stringify({
+        message,
+        sender_role: STATE.user ? STATE.user.role : 'guest',
+        sender_name: STATE.user ? STATE.user.name : 'Usuario Web'
+      })
     });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al enviar mensaje.');
-
+    if (!res.ok) throw new Error('Error al enviar.');
     input.value = '';
-    // Instantly poll to append
     pollChat(STATE.activeOrderDetails.id);
   } catch (error) {
     showToast(error.message, 'error');
   }
+}
+
+// ==========================================
+// SMARTPHONE BOT SIMULATOR
+// ==========================================
+async function handleAgentChatSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('agent-chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const select = document.getElementById('agent-sim-persona');
+  const option = select.options[select.selectedIndex];
+  const sender_phone = option.getAttribute('data-phone');
+  const platform = document.getElementById('agent-sim-platform').value;
+
+  // Render User Message
+  appendSimMessage(message, 'user');
+  input.value = '';
+
+  try {
+    const res = await fetch('/api/webhooks/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform, sender_phone, message })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del Agente.');
+
+    // Render Bot Message
+    setTimeout(() => {
+      appendSimMessage(data.reply, 'bot');
+      
+      // Reload stats and active views in background immediately!
+      loadDashboardStats();
+      if (STATE.currentTab === 'tab-portal') {
+        switchPortalRole(STATE.currentPortalRole);
+      }
+    }, 500);
+
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+function appendSimMessage(text, sender) {
+  const container = document.getElementById('agent-chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${sender}`;
+  bubble.innerHTML = text.replace(/\n/g, '<br>');
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
 }
