@@ -593,6 +593,8 @@ app.post('/api/missions/:id/claim', async (req, res) => {
       return res.status(401).json({ error: 'No autorizado. Requiere estudiante o proveedor verificado KYC.' });
     }
 
+    const { direct_donation } = req.body;
+
     const mission = await findRecord('missions', { id: req.params.id });
     if (!mission) {
       return res.status(404).json({ error: 'Misión no encontrada.' });
@@ -611,7 +613,14 @@ app.post('/api/missions/:id/claim', async (req, res) => {
     }
 
     // Update mission based on operator type
-    const claimData = { status: 'claimed' };
+    const claimData = {};
+    if (direct_donation) {
+      claimData.status = 'funded';
+      claimData.donor_name = `${operator.user.name} (Directo)`;
+    } else {
+      claimData.status = 'claimed';
+    }
+
     if (operator.type === 'student') {
       claimData.student_id = operator.user.id;
       claimData.student_name = operator.user.name;
@@ -626,12 +635,28 @@ app.post('/api/missions/:id/claim', async (req, res) => {
 
     const updated = await updateRecord('missions', mission.id, claimData);
 
+    // If direct donation, pre-initialize evidence so operator can directly upload invoice
+    if (direct_donation) {
+      await insertRecord('evidences', {
+        mission_id: mission.id,
+        donor_transfer_path: 'direct-donation',
+        student_receipt_path: 'direct-donation',
+        invoice_photo_path: null,
+        delivery_photo_path: null,
+        uploaded_at: new Date().toISOString()
+      });
+    }
+
     // Log chat message
+    const logMsg = direct_donation
+      ? `Misión tomada por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}) como DONACIÓN DIRECTA. Se han omitido los pasos de fondeo ya que cuenta con los insumos y procederá a la entrega.`
+      : `Misión tomada por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}). KYC asociado: [${operator.user.kyc_type.toUpperCase()}] ${operator.user.kyc_details}. Solicitud de fondos enviada a los donadores del mundo.`;
+
     await insertRecord('chats', {
       mission_id: mission.id,
       sender_role: 'system',
       sender_name: 'Sistema',
-      message: `Misión tomada por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}). KYC asociado: [${operator.user.kyc_type.toUpperCase()}] ${operator.user.kyc_details}. Solicitud de fondos enviada a los donadores del mundo.`,
+      message: logMsg,
       timestamp: new Date().toISOString()
     });
 
@@ -1110,7 +1135,16 @@ app.post('/api/webhooks/agent', async (req, res) => {
       }
 
       // Claim mission
-      const claimData = { status: 'claimed' };
+      const isDirect = text.includes('donacion') || text.includes('donación') || text.includes('directo');
+      const claimData = {};
+      
+      if (isDirect) {
+        claimData.status = 'funded';
+        claimData.donor_name = `${operator.user.name} (Directo)`;
+      } else {
+        claimData.status = 'claimed';
+      }
+
       if (operator.type === 'student') {
         claimData.student_id = operator.user.id;
         claimData.student_name = operator.user.name;
@@ -1125,13 +1159,32 @@ app.post('/api/webhooks/agent', async (req, res) => {
 
       await updateRecord('missions', mission.id, claimData);
 
+      if (isDirect) {
+        await insertRecord('evidences', {
+          mission_id: mission.id,
+          donor_transfer_path: 'direct-donation',
+          student_receipt_path: 'direct-donation',
+          invoice_photo_path: null,
+          delivery_photo_path: null,
+          uploaded_at: new Date().toISOString()
+        });
+      }
+
       await insertRecord('chats', {
         mission_id: mission.id,
         sender_role: 'system',
         sender_name: 'WhatsApp Bot',
-        message: `Misión tomada vía WhatsApp por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}).`,
+        message: isDirect
+          ? `Misión tomada vía WhatsApp por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}) como DONACIÓN DIRECTA.`
+          : `Misión tomada vía WhatsApp por el operador ${operator.user.name} (${operator.type === 'student' ? 'Estudiante' : 'Proveedor'}).`,
         timestamp: new Date().toISOString()
       });
+
+      if (isDirect) {
+        return res.json({
+          reply: `🚚 ¡Misión *${missionId}* asignada a ti como *Donación Directa* (insumos disponibles)!\n\nSe han omitido los pasos de fondeo. Puedes proceder directamente a despachar/comprar los insumos y subir la factura comercial.`
+        });
+      }
 
       return res.json({
         reply: `🚚 ¡Misión *${missionId}* asignada a ti! Tu billetera *[${operator.user.kyc_type.toUpperCase()}] ${operator.user.kyc_details}* ha sido vinculada.\n\nHemos notificado a los donadores internacionales para el fondeo de $${Number(mission.total_amount).toFixed(2)}.`

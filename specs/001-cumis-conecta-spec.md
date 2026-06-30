@@ -68,10 +68,21 @@ At the completion of a mission, participants can leave ratings (1 to 5 stars) an
 
 ---
 
+### Scenario 8: Direct Supply Donation (Bypassing Funding)
+An organization or person who already has the requested medical supplies can claim the mission as a "Direct Donation".
+- **Bypassing Funding**: By claiming it as a direct donation, the mission bypasses the donor transaction and receipt validation phases (`claimed` -> `funding_sent` -> `funded`).
+- **State Transition**: The mission transitions directly from `created` to `funded`. The claimant is designated as both the operator and the donor (e.g. `Carlos Mendoza (Directo)`).
+- **Logistics**: The operator proceeds directly to buy/despach (or deliver if they already have them) the supplies to the hospital.
+- **Acceptance Criteria**:
+  - Mission status transitions: `created` -> `funded` (direct donation claimed) -> `purchased` / `completed`.
+  - No donor transfer proof or student receipt proof is required.
+
+---
+
 ## Chat Agent Command Schemas (WhatsApp / Instagram Webhook)
 The omnichannel integration listens to incoming chats and performs database updates:
 1. **Hospital Create**: *"crear mision para [Hospital] con [cantidad] [insumo], [cantidad] [insumo]"*
-2. **Student/Provider Claim**: *"tomar mision [id]"*
+2. **Student/Provider Claim**: *"tomar mision [id]"* (Standard) or *"tomar mision [id] como donacion"* (Direct Donation)
 3. **Donor Fund**: *"donar a la mision [id]"*
 4. **Student/Provider Confirm Funds**: *"confirmar fondos [id]"*
 5. **Hospital Complete**: *"confirmar entrega [id]"*

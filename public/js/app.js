@@ -693,16 +693,24 @@ function renderStudentMissions() {
 }
 
 async function claimMission(missionId) {
+  const direct_donation = confirm("¿Desea tomar esta misión como Donación Directa (cuenta ya con los insumos y desea omitir la fase de fondeo)?");
+
   try {
     const res = await fetch(`/api/missions/${missionId}/claim`, {
       method: 'POST',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ direct_donation })
     });
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al tomar la misión.');
 
-    showToast('¡Misión tomada! Vinculando billetera KYC.', 'success');
+    if (direct_donation) {
+      showToast('¡Misión tomada como Donación Directa! Insumos listos para despacho/factura.', 'success');
+    } else {
+      showToast('¡Misión tomada! Vinculando billetera KYC.', 'success');
+    }
+
     if (STATE.user && STATE.user.role === 'provider') {
       loadProviderDashboard();
     } else {
