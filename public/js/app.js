@@ -267,6 +267,9 @@ function setupEventListeners() {
       const mode = btn.getAttribute('data-auth-mode');
       document.getElementById('student-login-form').classList.toggle('active', mode === 'login');
       document.getElementById('student-register-form').classList.toggle('active', mode === 'register');
+      if (mode === 'register') {
+        initializeCaptcha('student-register-form');
+      }
     });
   });
 
@@ -279,6 +282,26 @@ function setupEventListeners() {
       const mode = btn.getAttribute('data-auth-mode');
       document.getElementById('provider-login-form').classList.toggle('active', mode === 'login');
       document.getElementById('provider-register-form').classList.toggle('active', mode === 'register');
+      if (mode === 'register') {
+        initializeCaptcha('provider-register-form');
+      }
+    });
+  });
+
+  // Hospital Register/Request tab toggles
+  document.querySelectorAll('#portal-view-hosp .auth-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#portal-view-hosp .auth-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      const mode = btn.getAttribute('data-hosp-mode');
+      document.getElementById('hosp-area-request').classList.toggle('active', mode === 'request');
+      document.getElementById('hosp-area-register').classList.toggle('active', mode === 'register');
+      document.getElementById('hosp-area-request').classList.toggle('hidden', mode !== 'request');
+      document.getElementById('hosp-area-register').classList.toggle('hidden', mode !== 'register');
+      if (mode === 'register') {
+        initializeCaptcha('hospital-register-form');
+      }
     });
   });
 
@@ -289,6 +312,9 @@ function setupEventListeners() {
   // Provider auth submissions
   document.getElementById('provider-login-form').addEventListener('submit', handleProviderLogin);
   document.getElementById('provider-register-form').addEventListener('submit', handleProviderRegister);
+
+  // Hospital register submission
+  document.getElementById('hospital-register-form').addEventListener('submit', handleHospitalRegister);
 
   // Admin auth and donations submissions
   document.getElementById('admin-login-form').addEventListener('submit', handleAdminLogin);
@@ -472,6 +498,11 @@ async function handleStudentLogin(e) {
 
 async function handleStudentRegister(e) {
   e.preventDefault();
+  if (!validateCaptcha('student-register-form')) {
+    showToast('Verificación humana incorrecta. Intente de nuevo.', 'error');
+    initializeCaptcha('student-register-form');
+    return;
+  }
   const name = document.getElementById('stud-reg-name').value;
   const phone = document.getElementById('stud-reg-phone').value;
   const email = document.getElementById('stud-reg-email').value;
@@ -541,6 +572,11 @@ async function handleProviderLogin(e) {
 
 async function handleProviderRegister(e) {
   e.preventDefault();
+  if (!validateCaptcha('provider-register-form')) {
+    showToast('Verificación humana incorrecta. Intente de nuevo.', 'error');
+    initializeCaptcha('provider-register-form');
+    return;
+  }
   const name = document.getElementById('prov-reg-name').value;
   const phone = document.getElementById('prov-reg-phone').value;
   const email = document.getElementById('prov-reg-email').value;
@@ -855,6 +891,15 @@ async function loadAdminDashboard() {
     renderPendingProviders();
   } catch (e) {}
 
+  // Load pending hospitals
+  try {
+    const res = await fetch('/api/hospitals/pending', { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Error.');
+    const data = await res.json();
+    STATE.pendingHospitals = data;
+    renderPendingHospitals();
+  } catch (e) {}
+
   // Load all missions
   try {
     await loadAllMissions();
@@ -909,6 +954,33 @@ function renderPendingProviders() {
   window.verifyProvider = verifyProvider;
 }
 
+function renderPendingHospitals() {
+  const tbody = document.getElementById('admin-pending-hospitals-body');
+  if (!tbody) return;
+  if (!STATE.pendingHospitals || STATE.pendingHospitals.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay centros de salud en espera de verificación.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = STATE.pendingHospitals.map(h => `
+    <tr>
+      <td>
+        <strong>${h.name}</strong>
+        ${h.image_path ? `<br/><a href="${h.image_path}" target="_blank" style="font-size:0.75rem;color:var(--accent-cyan)">Ver foto de fachada</a>` : ''}
+      </td>
+      <td>${h.location}</td>
+      <td>${h.manager_name}<br/><span style="font-size:0.75rem;color:var(--text-muted);">${h.manager_email}</span></td>
+      <td>${h.phone} ${h.is_whatsapp ? '<span class="badge badge-success">WA</span>' : ''}</td>
+      <td><code>${h.rif || '-'}</code></td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="window.verifyHospital('${h.id}')">Verificar</button>
+      </td>
+    </tr>
+  `).join('');
+
+  window.verifyHospital = verifyHospital;
+}
+
 async function verifyStudent(id) {
   try {
     const res = await fetch('/api/students/verify', {
@@ -940,6 +1012,26 @@ async function verifyProvider(id) {
 
     showToast(`KYC del proveedor ${data.name} verificado.`, 'success');
     loadAdminDashboard();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+async function verifyHospital(id) {
+  try {
+    const res = await fetch('/api/hospitals/verify', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ id, status: 'verified' })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error.');
+
+    showToast(`Centro de salud/Hospital ${data.name} verificado con éxito.`, 'success');
+    loadAdminDashboard();
+    // Refresh hospital selector list
+    await loadHospitals();
   } catch (error) {
     showToast(error.message, 'error');
   }
@@ -1509,4 +1601,73 @@ function appendSimMessage(text, sender) {
   bubble.innerHTML = text.replace(/\n/g, '<br>');
   container.appendChild(bubble);
   container.scrollTop = container.scrollHeight;
+}
+
+// ==========================================
+// HUMAN CAPTCHA & HOSPITAL REGISTRATION HELPERS
+// ==========================================
+const captchaAnswers = {};
+
+function initializeCaptcha(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  const num1 = Math.floor(Math.random() * 9) + 1;
+  const num2 = Math.floor(Math.random() * 9) + 1;
+  captchaAnswers[formId] = num1 + num2;
+  
+  const label = form.querySelector('.captcha-label');
+  if (label) {
+    label.textContent = `Verificación humana: ¿Cuánto es ${num1} + ${num2}?`;
+  }
+  const input = form.querySelector('.captcha-input');
+  if (input) {
+    input.value = '';
+  }
+}
+
+function validateCaptcha(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return false;
+  const input = form.querySelector('.captcha-input');
+  if (!input) return false;
+  const answer = parseInt(input.value.trim());
+  return answer === captchaAnswers[formId];
+}
+
+async function handleHospitalRegister(e) {
+  e.preventDefault();
+  if (!validateCaptcha('hospital-register-form')) {
+    showToast('Verificación humana incorrecta. Intente de nuevo.', 'error');
+    initializeCaptcha('hospital-register-form');
+    return;
+  }
+
+  const name = document.getElementById('hosp-reg-name').value.trim();
+  const location = document.getElementById('hosp-reg-location').value.trim();
+  const phone = document.getElementById('hosp-reg-phone').value.trim();
+  const manager_name = document.getElementById('hosp-reg-mgr-name').value.trim();
+  const manager_email = document.getElementById('hosp-reg-mgr-email').value.trim();
+  const is_whatsapp = document.getElementById('hosp-reg-whatsapp').checked;
+  const rif = document.getElementById('hosp-reg-rif').value.trim();
+  const image_path = document.getElementById('hosp-reg-image').value.trim();
+
+  try {
+    const res = await fetch('/api/hospitals/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, location, phone, manager_name, manager_email, is_whatsapp, rif, image_path })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al registrar.');
+
+    showToast('Registro de hospital enviado. Su cuenta será verificada por el administrador.', 'success');
+    e.target.reset();
+    document.querySelector('#portal-view-hosp .auth-tab-btn[data-hosp-mode="request"]').click();
+    
+    // Refresh hospital selector list in client state
+    await loadHospitals(); 
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
 }

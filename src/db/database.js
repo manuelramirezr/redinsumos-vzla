@@ -92,6 +92,12 @@ async function initSqliteTables(db) {
       name TEXT,
       location TEXT,
       phone TEXT,
+      manager_name TEXT,
+      manager_email TEXT,
+      is_whatsapp INTEGER,
+      rif TEXT,
+      image_path TEXT,
+      status TEXT,
       createdAt TEXT,
       updatedAt TEXT
     )
@@ -437,8 +443,28 @@ const PRODUCT_SEEDS = [
 ];
 
 const HOSPITAL_SEEDS = [
-  { name: 'Hospital Universitario de los Andes (IAHULA)', location: 'Mérida, Venezuela', phone: '+584122222222' },
-  { name: 'Hospital Vargas de Caracas', location: 'Caracas, Venezuela', phone: '+584121111111' }
+  {
+    name: 'Hospital Universitario de los Andes (IAHULA)',
+    location: 'Mérida, Venezuela',
+    phone: '+584122222222',
+    manager_name: 'Dr. Gerardo Albarrán',
+    manager_email: 'director@iahula.org',
+    is_whatsapp: 1,
+    rif: 'G-20001234-9',
+    image_path: 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=400',
+    status: 'verified'
+  },
+  {
+    name: 'Hospital Vargas de Caracas',
+    location: 'Caracas, Venezuela',
+    phone: '+584121111111',
+    manager_name: 'Dra. María Elena Rivas',
+    manager_email: 'direccion@hospitalvargas.gov.ve',
+    is_whatsapp: 1,
+    rif: 'G-20005678-0',
+    image_path: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=400',
+    status: 'verified'
+  }
 ];
 
 const DONOR_SEEDS = [

@@ -79,6 +79,14 @@ An organization or person who already has the requested medical supplies can cla
 
 ---
 
+### Scenario 9: Hospital Profile Registration & Human CAPTCHA Verification
+Hospitals can register themselves directly on the CUMIS Conecta platform.
+- **Registration details**: Name of hospital, Address/Location of hospital, Manager's first and last name, Manager's email, Manager's phone number, WhatsApp contact confirmation flag, optional logo/facility image, and optional tax ID (RIF).
+- **Human Validation Check**: All public signup forms (Student, Provider, and Hospital registration) must validate that the registrant is a human by presenting a dynamic math verification puzzle (e.g. Sum math captcha).
+- **Verification Status**: Hospital profiles are created in `pending` status. The CUMIS Administrator audits their KYC details on the Admin Console and updates their status to `verified`. Only verified hospitals can create medical supply missions on the portal or via the WhatsApp chatbot agent.
+
+---
+
 ## Chat Agent Command Schemas (WhatsApp / Instagram Webhook)
 The omnichannel integration listens to incoming chats and performs database updates:
 1. **Hospital Create**: *"crear mision para [Hospital] con [cantidad] [insumo], [cantidad] [insumo]"*

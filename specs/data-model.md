@@ -8,8 +8,14 @@ This specification defines the database tables and state machine for the CUMIS C
 Represents the requesting health centers.
 * `id`: string (UUID)
 * `name`: string
-* `location`: string
+* `location`: string (physical address)
 * `phone`: string (identifier for WhatsApp webhook parsing)
+* `manager_name`: string (First and Last name of the person in charge)
+* `manager_email`: string (Email of the person in charge)
+* `is_whatsapp`: boolean (identifies if the phone is a WhatsApp contact line)
+* `rif`: string (optional, tax ID code)
+* `image_path`: string (optional, path to local/remote hospital picture)
+* `status`: `'pending'` | `'verified'` (requires admin review before missions can be created)
 
 ### 2. `students`
 Represents the logistics student operators completing the field missions.

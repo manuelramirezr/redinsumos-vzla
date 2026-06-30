@@ -132,61 +132,121 @@
 
       <!-- 3A. HOSPITAL VIEW -->
       <div id="portal-view-hosp" class="portal-subview active">
-        <div class="portal-grid">
-          <div class="glass-panel text-content">
-            <h3>Solicitar Insumos Médicos</h3>
-            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;">
-              Seleccione su centro asistencial y agregue insumos del catálogo cerrado. Los estudiantes en Mérida serán notificados para realizar la compra física una vez que un donador financie la misión.
-            </p>
-            <form id="hospital-mission-form">
-              <div class="form-group">
-                <label for="hosp-select">Centro de Salud / Hospital</label>
-                <select id="hosp-select" required>
-                  <!-- Loaded via JS -->
-                </select>
-              </div>
+        <div class="auth-tabs" style="margin-bottom:1.5rem;">
+          <button class="auth-tab-btn active" data-hosp-mode="request">Solicitar Insumos</button>
+          <button class="auth-tab-btn" data-hosp-mode="register">Registrar Centro de Salud / Hospital (KYC)</button>
+        </div>
 
-              <div class="items-builder-container">
-                <label>Agregar Insumo Requerido</label>
-                <div class="builder-item-row">
-                  <select id="hosp-builder-product-select" class="form-select">
+        <!-- Request Mission Area -->
+        <div class="hosp-area active" id="hosp-area-request">
+          <div class="portal-grid">
+            <div class="glass-panel text-content">
+              <h3>Solicitar Insumos Médicos</h3>
+              <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;">
+                Seleccione su centro asistencial y agregue insumos del catálogo cerrado. Los estudiantes en Mérida serán notificados para realizar la compra física una vez que un donador financie la misión.
+              </p>
+              <form id="hospital-mission-form">
+                <div class="form-group">
+                  <label for="hosp-select">Centro de Salud / Hospital</label>
+                  <select id="hosp-select" required>
                     <!-- Loaded via JS -->
                   </select>
-                  <input type="number" id="hosp-builder-qty" placeholder="Cant" min="1" class="qty-input">
-                  <button type="button" id="hosp-add-item-btn" class="btn btn-icon btn-sm">➕</button>
                 </div>
-              </div>
 
-              <!-- Cart table -->
-              <table class="cart-table hidden" id="hosp-cart-table">
-                <thead>
-                  <tr>
-                    <th>Insumo</th>
-                    <th>Cant</th>
-                    <th>Subtotal (Ref)</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="hosp-cart-body"></tbody>
-              </table>
+                <div class="items-builder-container">
+                  <label>Agregar Insumo Requerido</label>
+                  <div class="builder-item-row">
+                    <select id="hosp-builder-product-select" class="form-select">
+                      <!-- Loaded via JS -->
+                    </select>
+                    <input type="number" id="hosp-builder-qty" placeholder="Cant" min="1" class="qty-input">
+                    <button type="button" id="hosp-add-item-btn" class="btn btn-icon btn-sm">➕</button>
+                  </div>
+                </div>
 
-              <div class="order-total-row hidden" id="hosp-total-area">
-                <span>Costo Referencial Total:</span>
-                <span class="total-value" id="hosp-total-value">$0.00</span>
-              </div>
+                <!-- Cart table -->
+                <table class="cart-table hidden" id="hosp-cart-table">
+                  <thead>
+                    <tr>
+                      <th>Insumo</th>
+                      <th>Cant</th>
+                      <th>Subtotal (Ref)</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="hosp-cart-body"></tbody>
+                </table>
 
-              <button type="submit" class="btn btn-primary btn-block hidden" id="hosp-submit-mission-btn">Registrar Misión Humanitaria</button>
-            </form>
+                <div class="order-total-row hidden" id="hosp-total-area">
+                  <span>Costo Referencial Total:</span>
+                  <span class="total-value" id="hosp-total-value">$0.00</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block hidden" id="hosp-submit-mission-btn">Registrar Misión Humanitaria</button>
+              </form>
+            </div>
+            
+            <div class="glass-panel text-content">
+              <h3>¿Cómo funciona para Hospitales?</h3>
+              <ul style="list-style:none;display:flex;flex-direction:column;gap:1rem;margin-top:1rem;font-size:0.9rem;color:var(--text-muted)">
+                <li>🏥 <strong>1. Solicitud:</strong> Registre los insumos necesarios a través de esta web o enviando un mensaje a nuestro agente de WhatsApp.</li>
+                <li>🎓 <strong>2. Asignación:</strong> Un estudiante de medicina de CUMIS toma la misión y asocia su cuenta Meru/Zelle.</li>
+                <li>🌍 <strong>3. Fondeo:</strong> Donadores internacionales transfieren el dinero directamente al estudiante.</li>
+                <li>📦 <strong>4. Entrega:</strong> El estudiante le lleva los insumos físicos al hospital. Usted valida la entrega firmando/subiendo una foto de control.</li>
+              </ul>
+            </div>
           </div>
-          
-          <div class="glass-panel text-content">
-            <h3>¿Cómo funciona para Hospitales?</h3>
-            <ul style="list-style:none;display:flex;flex-direction:column;gap:1rem;margin-top:1rem;font-size:0.9rem;color:var(--text-muted)">
-              <li>🏥 <strong>1. Solicitud:</strong> Registre los insumos necesarios a través de esta web o enviando un mensaje a nuestro agente de WhatsApp.</li>
-              <li>🎓 <strong>2. Asignación:</strong> Un estudiante de medicina de CUMIS toma la misión y asocia su cuenta Meru/Zelle.</li>
-              <li>🌍 <strong>3. Fondeo:</strong> Donadores internacionales transfieren el dinero directamente al estudiante.</li>
-              <li>📦 <strong>4. Entrega:</strong> El estudiante le lleva los insumos físicos al hospital. Usted valida la entrega firmando/subiendo una foto de control.</li>
-            </ul>
+        </div>
+
+        <!-- Register Hospital Area -->
+        <div class="hosp-area hidden" id="hosp-area-register">
+          <div class="glass-panel text-content" style="max-width: 600px; margin: 0 auto;">
+            <h3>Registrar Centro de Salud / Hospital</h3>
+            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;">
+              Registre los datos de su hospital o centro de salud. Se requiere la información del encargado para el contacto y posterior verificación KYC.
+            </p>
+            <form id="hospital-register-form">
+              <div class="form-group">
+                <label for="hosp-reg-name">Nombre del Centro de Salud / Hospital</label>
+                <input type="text" id="hosp-reg-name" placeholder="Ej: Hospital Vargas de Caracas" required>
+              </div>
+              <div class="form-group">
+                <label for="hosp-reg-location">Dirección / Ubicación Física</label>
+                <input type="text" id="hosp-reg-location" placeholder="Ej: Av. Principal, Caracas, Venezuela" required>
+              </div>
+              <div class="form-group">
+                <label for="hosp-reg-mgr-name">Nombre y Apellido del Encargado</label>
+                <input type="text" id="hosp-reg-mgr-name" placeholder="Ej: Dra. María Elena Rivas" required>
+              </div>
+              <div class="form-group">
+                <label for="hosp-reg-phone">Teléfono del Encargado (formato internacional)</label>
+                <input type="text" id="hosp-reg-phone" placeholder="Ej: +584121111111" required>
+              </div>
+              <div class="form-group checkbox-group" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+                <input type="checkbox" id="hosp-reg-whatsapp" style="width:auto;margin:0;">
+                <label for="hosp-reg-whatsapp" style="margin:0;font-weight:normal;cursor:pointer;">Este número es contacto directo de WhatsApp</label>
+              </div>
+              <div class="form-group">
+                <label for="hosp-reg-mgr-email">Correo Electrónico del Encargado</label>
+                <input type="email" id="hosp-reg-mgr-email" placeholder="director@hospital.com" required>
+              </div>
+              <div class="form-group">
+                <label for="hosp-reg-rif">RIF (Opcional)</label>
+                <input type="text" id="hosp-reg-rif" placeholder="Ej: G-20005678-0">
+              </div>
+              <div class="form-group">
+                <label for="hosp-reg-image">URL de Imagen del Hospital / Logotipo (Opcional)</label>
+                <input type="text" id="hosp-reg-image" placeholder="Ej: https://enlace-imagen.com/foto.jpg">
+              </div>
+
+              <!-- CAPTCHA slot -->
+              <div class="form-group captcha-group" id="hosp-captcha-group" style="margin-bottom: 1.5rem;">
+                <label class="captcha-label" style="font-weight:bold;color:var(--accent-cyan);"></label>
+                <input type="text" class="captcha-input" placeholder="Resuelve la suma" required style="border-color:var(--accent-cyan);">
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block">Enviar Registro de Hospital</button>
+            </form>
           </div>
         </div>
       </div>
@@ -242,6 +302,13 @@
               <label for="stud-reg-password">Contraseña</label>
               <input type="password" id="stud-reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
             </div>
+
+            <!-- CAPTCHA slot -->
+            <div class="form-group captcha-group" id="stud-captcha-group" style="margin-bottom: 1.5rem;">
+              <label class="captcha-label" style="font-weight:bold;color:var(--accent-cyan);"></label>
+              <input type="text" class="captcha-input" placeholder="Resuelve la suma" required style="border-color:var(--accent-cyan);">
+            </div>
+
             <button type="submit" class="btn btn-primary btn-block">Enviar Registro KYC</button>
           </form>
         </div>
@@ -332,6 +399,13 @@
               <label for="prov-reg-password">Contraseña</label>
               <input type="password" id="prov-reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
             </div>
+
+            <!-- CAPTCHA slot -->
+            <div class="form-group captcha-group" id="prov-captcha-group" style="margin-bottom: 1.5rem;">
+              <label class="captcha-label" style="font-weight:bold;color:var(--accent-cyan);"></label>
+              <input type="text" class="captcha-input" placeholder="Resuelve la suma" required style="border-color:var(--accent-cyan);">
+            </div>
+
             <button type="submit" class="btn btn-primary btn-block">Enviar Registro KYC</button>
           </form>
         </div>
@@ -524,6 +598,29 @@
                 <tbody id="admin-pending-providers-body">
                   <!-- Rendered via JS -->
                   <tr><td colspan="6" class="empty-state">No hay proveedores en espera de verificación.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Verification Panel (Hospitals) -->
+          <div class="glass-panel admin-sub-panel">
+            <h3>Aprobación de Registro de Hospitales</h3>
+            <div class="operator-verification-list">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Hospital</th>
+                    <th>Ubicación</th>
+                    <th>Encargado</th>
+                    <th>Contacto</th>
+                    <th>RIF</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-pending-hospitals-body">
+                  <!-- Rendered via JS -->
+                  <tr><td colspan="6" class="empty-state">No hay hospitales en espera de verificación.</td></tr>
                 </tbody>
               </table>
             </div>

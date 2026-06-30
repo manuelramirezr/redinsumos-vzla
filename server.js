@@ -197,7 +197,7 @@ app.get('/api/products', async (req, res) => {
 // ==========================================
 app.get('/api/hospitals', async (req, res) => {
   try {
-    const hospitals = await readTable('hospitals');
+    const hospitals = await findRecords('hospitals', { status: 'verified' });
     res.json(hospitals);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -426,6 +426,69 @@ app.post('/api/providers/verify', async (req, res) => {
 });
 
 // ==========================================
+// 4.6 HOSPITAL MANAGEMENT & PROFILE SIGNUP
+// ==========================================
+app.post('/api/hospitals/register', async (req, res) => {
+  try {
+    const { name, location, phone, manager_name, manager_email, is_whatsapp, rif, image_path } = req.body;
+    
+    if (!name || !location || !phone || !manager_name || !manager_email) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios para el registro.' });
+    }
+
+    const existing = await findRecord('hospitals', { phone });
+    if (existing) {
+      return res.status(400).json({ error: 'Este número de teléfono ya está registrado como centro de salud/hospital.' });
+    }
+
+    const hospital = await insertRecord('hospitals', {
+      name,
+      location,
+      phone,
+      manager_name,
+      manager_email,
+      is_whatsapp: is_whatsapp ? 1 : 0,
+      rif: rif || null,
+      image_path: image_path || null,
+      status: 'pending' // pending manual admin verification
+    });
+
+    res.status(201).json(hospital);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/hospitals/pending', async (req, res) => {
+  try {
+    if (!isAdmin(req)) {
+      return res.status(401).json({ error: 'No autorizado. Permisos de administrador requeridos.' });
+    }
+    const pending = await findRecords('hospitals', { status: 'pending' });
+    res.json(pending);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/hospitals/verify', async (req, res) => {
+  try {
+    if (!isAdmin(req)) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+    const { id, status } = req.body;
+    if (!id || !status) {
+      return res.status(400).json({ error: 'Falta ID de hospital o estado.' });
+    }
+
+    const hospital = await updateRecord('hospitals', id, { status });
+    res.json({ id: hospital.id, name: hospital.name, status: hospital.status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
 // 5. MISSIONS / ORDERS FLOW
 // ==========================================
 app.get('/api/missions', async (req, res) => {
@@ -536,6 +599,9 @@ app.post('/api/missions', async (req, res) => {
     const hospital = await findRecord('hospitals', { id: hospital_id });
     if (!hospital) {
       return res.status(404).json({ error: 'Hospital no registrado.' });
+    }
+    if (hospital.status !== 'verified') {
+      return res.status(400).json({ error: 'El centro de salud/hospital aún no ha sido verificado KYC por el administrador.' });
     }
 
     // Validate products match official catalog
@@ -1014,18 +1080,28 @@ app.post('/api/webhooks/agent', async (req, res) => {
     // 1. HOSPITAL CREATE MISSION COMMAND
     // format: "crear mision vargas 50 gasas, 20 alcohol"
     if (text.startsWith('crear mision') || text.startsWith('crear misión')) {
-      const hospitals = await readTable('hospitals');
-      let hospital = null;
-
-      // Match hospital by location/name
-      for (const h of hospitals) {
-        if (text.includes(h.name.toLowerCase()) || text.includes(h.name.split(' ')[1]?.toLowerCase())) {
-          hospital = h;
-          break;
+      let hospital = await findRecord('hospitals', { phone: sender_phone });
+      if (!hospital) {
+        const hospitals = await readTable('hospitals');
+        // Match hospital by location/name
+        for (const h of hospitals) {
+          if (text.includes(h.name.toLowerCase()) || text.includes(h.name.split(' ')[1]?.toLowerCase())) {
+            hospital = h;
+            break;
+          }
         }
       }
+
       if (!hospital) {
-        hospital = hospitals[0]; // fallback to first seeded hospital
+        return res.json({
+          reply: `⚠️ Tu número ${sender_phone} no está registrado como centro de salud/hospital en CUMIS Conecta. Por favor regístrate en el Portal Web primero.`
+        });
+      }
+
+      if (hospital.status !== 'verified') {
+        return res.json({
+          reply: `⚠️ El centro de salud *${hospital.name}* está registrado pero su KYC aún no ha sido verificado por el administrador.`
+        });
       }
 
       // Parse items: looking for "<number> <item>"
