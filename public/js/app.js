@@ -7,7 +7,7 @@ const STATE = {
   hospitals: [],
   dashboardStats: null,
   missions: [],
-  pendingStudents: [],
+  pendingMissionaries: [],
   hospCart: [],
   activeOrderDetails: null,
   chatIntervalId: null
@@ -138,12 +138,12 @@ function switchPortalRole(role) {
   
   // Toggle subviews
   document.getElementById('portal-view-hosp').classList.toggle('active', role === 'hosp');
-  document.getElementById('portal-view-stud').classList.toggle('active', role === 'stud');
+  document.getElementById('portal-view-mish').classList.toggle('active', role === 'mish');
   document.getElementById('portal-view-prov').classList.toggle('active', role === 'prov');
   document.getElementById('portal-view-donor').classList.toggle('active', role === 'donor');
 
-  if (role === 'stud') {
-    renderStudentView();
+  if (role === 'mish') {
+    renderMissionaryView();
   } else if (role === 'prov') {
     renderProviderView();
   } else if (role === 'donor') {
@@ -162,7 +162,7 @@ function updateUserDisplay() {
   if (STATE.user) {
     let roleLabel = 'Usuario';
     if (STATE.user.role === 'admin') roleLabel = '🔑 Admin';
-    if (STATE.user.role === 'student') roleLabel = '🎓 Estudiante';
+    if (STATE.user.role === 'missionary') roleLabel = '🎓 Misionero';
     if (STATE.user.role === 'provider') roleLabel = '🏭 Proveedor';
     
     display.textContent = `${roleLabel}: ${STATE.user.name}`;
@@ -258,20 +258,36 @@ function setupEventListeners() {
     switchTab('tab-public');
   });
 
-  // Student Register/Login tab toggles
-  document.querySelectorAll('#student-auth-container .auth-tab-btn').forEach(btn => {
+  // Missionary Register/Login tab toggles
+  document.querySelectorAll('#missionary-auth-container .auth-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#student-auth-container .auth-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#missionary-auth-container .auth-tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       
       const mode = btn.getAttribute('data-auth-mode');
-      document.getElementById('student-login-form').classList.toggle('active', mode === 'login');
-      document.getElementById('student-register-form').classList.toggle('active', mode === 'register');
+      document.getElementById('missionary-login-form').classList.toggle('active', mode === 'login');
+      document.getElementById('missionary-register-form').classList.toggle('active', mode === 'register');
       if (mode === 'register') {
-        initializeCaptcha('student-register-form');
+        initializeCaptcha('missionary-register-form');
       }
     });
   });
+
+  // Missionary dynamic type selector toggle
+  const mishTypeSelect = document.getElementById('mish-reg-type');
+  if (mishTypeSelect) {
+    mishTypeSelect.addEventListener('change', (e) => {
+      const isStudent = e.target.value === 'student';
+      const container = document.getElementById('mish-reg-university-container');
+      if (container) {
+        container.style.display = isStudent ? 'block' : 'none';
+      }
+      const univInput = document.getElementById('mish-reg-university');
+      if (univInput) {
+        univInput.required = isStudent;
+      }
+    });
+  }
 
   // Provider Register/Login tab toggles
   document.querySelectorAll('#provider-auth-container .auth-tab-btn').forEach(btn => {
@@ -305,9 +321,9 @@ function setupEventListeners() {
     });
   });
 
-  // Student auth submissions
-  document.getElementById('student-login-form').addEventListener('submit', handleStudentLogin);
-  document.getElementById('student-register-form').addEventListener('submit', handleStudentRegister);
+  // Missionary auth submissions
+  document.getElementById('missionary-login-form').addEventListener('submit', handleMissionaryLogin);
+  document.getElementById('missionary-register-form').addEventListener('submit', handleMissionaryRegister);
 
   // Provider auth submissions
   document.getElementById('provider-login-form').addEventListener('submit', handleProviderLogin);
@@ -442,7 +458,7 @@ async function handleHospitalMissionSubmit(e) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al crear la misión.');
 
-    showToast('¡Misión humanitaria registrada con éxito! Los estudiantes han sido notificados.', 'success');
+    showToast('¡Misión humanitaria registrada con éxito! Los misioneros han sido notificados.', 'success');
     e.target.reset();
     STATE.hospCart = [];
     renderHospCart();
@@ -455,29 +471,29 @@ async function handleHospitalMissionSubmit(e) {
 }
 
 // ==========================================
-// STUDENT VIEW CONTROLLERS
+// MISSIONARY VIEW CONTROLLERS
 // ==========================================
-function renderStudentView() {
-  const authBox = document.getElementById('student-auth-container');
-  const dashboard = document.getElementById('student-dashboard');
+function renderMissionaryView() {
+  const authBox = document.getElementById('missionary-auth-container');
+  const dashboard = document.getElementById('missionary-dashboard');
 
-  if (STATE.user && STATE.user.role === 'student') {
+  if (STATE.user && STATE.user.role === 'missionary') {
     authBox.classList.add('hidden');
     dashboard.classList.remove('hidden');
-    loadStudentDashboard();
+    loadMissionaryDashboard();
   } else {
     authBox.classList.remove('hidden');
     dashboard.classList.add('hidden');
   }
 }
 
-async function handleStudentLogin(e) {
+async function handleMissionaryLogin(e) {
   e.preventDefault();
-  const phone = document.getElementById('stud-login-phone').value;
-  const password = document.getElementById('stud-login-password').value;
+  const phone = document.getElementById('mish-login-phone').value;
+  const password = document.getElementById('mish-login-password').value;
 
   try {
-    const res = await fetch('/api/students/login', {
+    const res = await fetch('/api/missionaries/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, password })
@@ -490,31 +506,33 @@ async function handleStudentLogin(e) {
     localStorage.setItem('cumis_user', JSON.stringify(data));
     updateUserDisplay();
     showToast(`Bienvenido de nuevo, ${data.name}!`, 'success');
-    renderStudentView();
+    renderMissionaryView();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-async function handleStudentRegister(e) {
+async function handleMissionaryRegister(e) {
   e.preventDefault();
-  if (!validateCaptcha('student-register-form')) {
+  if (!validateCaptcha('missionary-register-form')) {
     showToast('Verificación humana incorrecta. Intente de nuevo.', 'error');
-    initializeCaptcha('student-register-form');
+    initializeCaptcha('missionary-register-form');
     return;
   }
-  const name = document.getElementById('stud-reg-name').value;
-  const phone = document.getElementById('stud-reg-phone').value;
-  const email = document.getElementById('stud-reg-email').value;
-  const kyc_type = document.getElementById('stud-reg-kyc-type').value;
-  const kyc_details = document.getElementById('stud-reg-kyc-details').value;
-  const password = document.getElementById('stud-reg-password').value;
+  const name = document.getElementById('mish-reg-name').value;
+  const phone = document.getElementById('mish-reg-phone').value;
+  const email = document.getElementById('mish-reg-email').value;
+  const type = document.getElementById('mish-reg-type').value;
+  const university = document.getElementById('mish-reg-university').value;
+  const kyc_type = document.getElementById('mish-reg-kyc-type').value;
+  const kyc_details = document.getElementById('mish-reg-kyc-details').value;
+  const password = document.getElementById('mish-reg-password').value;
 
   try {
-    const res = await fetch('/api/students/register', {
+    const res = await fetch('/api/missionaries/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, email, kyc_type, kyc_details, password })
+      body: JSON.stringify({ name, phone, email, type, university, kyc_type, kyc_details, password })
     });
 
     const data = await res.json();
@@ -522,7 +540,7 @@ async function handleStudentRegister(e) {
 
     showToast('Registro enviado. Su cuenta y KYC serán verificados por el administrador.', 'success');
     e.target.reset();
-    document.querySelector('#student-auth-container .auth-tab-btn[data-auth-mode="login"]').click();
+    document.querySelector('#missionary-auth-container .auth-tab-btn[data-auth-mode="login"]').click();
   } catch (error) {
     showToast(error.message, 'error');
   }
@@ -662,25 +680,34 @@ function renderProviderMissions() {
   }
 }
 
-async function loadStudentDashboard() {
+async function loadMissionaryDashboard() {
   if (!STATE.user) return;
 
-  document.getElementById('student-profile-name').textContent = STATE.user.name;
-  document.getElementById('student-profile-kyc-type').textContent = STATE.user.kyc_type;
-  document.getElementById('student-profile-kyc-details').textContent = STATE.user.kyc_details;
-  document.getElementById('student-profile-phone').textContent = STATE.user.phone;
+  document.getElementById('missionary-profile-name').textContent = STATE.user.name;
+  document.getElementById('missionary-profile-kyc-type').textContent = STATE.user.kyc_type;
+  document.getElementById('missionary-profile-kyc-details').textContent = STATE.user.kyc_details;
+  document.getElementById('missionary-profile-phone').textContent = STATE.user.phone;
+  
+  document.getElementById('missionary-profile-type').textContent = STATE.user.type === 'student' ? 'Estudiante' : 'Sociedad Civil';
+  const univRow = document.getElementById('missionary-profile-university-row');
+  if (STATE.user.type === 'student') {
+    univRow.classList.remove('hidden');
+    document.getElementById('missionary-profile-university').textContent = STATE.user.university || '-';
+  } else {
+    univRow.classList.add('hidden');
+  }
 
   // Refresh missions
   await loadAllMissions();
-  renderStudentMissions();
+  renderMissionaryMissions();
 }
 
-function renderStudentMissions() {
-  const availableList = document.getElementById('student-available-missions');
-  const myMissionsList = document.getElementById('student-my-missions');
+function renderMissionaryMissions() {
+  const availableList = document.getElementById('missionary-available-missions');
+  const myMissionsList = document.getElementById('missionary-my-missions');
 
   const available = STATE.missions.filter(m => m.status === 'created');
-  const mine = STATE.missions.filter(m => m.student_id === STATE.user.id);
+  const mine = STATE.missions.filter(m => m.missionary_id === STATE.user.id);
 
   // 1. Render Available
   if (available.length === 0) {
@@ -750,7 +777,7 @@ async function claimMission(missionId) {
     if (STATE.user && STATE.user.role === 'provider') {
       loadProviderDashboard();
     } else {
-      loadStudentDashboard();
+      loadMissionaryDashboard();
     }
   } catch (error) {
     showToast(error.message, 'error');
@@ -765,7 +792,7 @@ async function loadDonorMissions() {
     await loadAllMissions();
     const list = document.getElementById('donor-missions-list');
     
-    // Filter missions that are claimed (assigned to student but not funded yet)
+    // Filter missions that are claimed (assigned to missionary but not funded yet)
     const pendingFondeo = STATE.missions.filter(m => m.status === 'claimed');
 
     if (pendingFondeo.length === 0) {
@@ -774,11 +801,11 @@ async function loadDonorMissions() {
     }
 
     list.innerHTML = pendingFondeo.map(m => {
-      const operator_name = m.student_name || m.provider_name;
-      const operator_kyc_type = m.student_kyc_type || m.provider_kyc_type || 'N/A';
-      const operator_kyc_details = m.student_kyc_details || m.provider_kyc_details || 'N/A';
-      const operator_label = m.student_id ? 'Estudiante' : 'Proveedor';
-      const operator_rating = m.student_id ? m.student_rating : m.provider_rating;
+      const operator_name = m.missionary_name || m.provider_name;
+      const operator_kyc_type = m.missionary_kyc_type || m.provider_kyc_type || 'N/A';
+      const operator_kyc_details = m.missionary_kyc_details || m.provider_kyc_details || 'N/A';
+      const operator_label = m.missionary_id ? 'Misionero' : 'Proveedor';
+      const operator_rating = m.missionary_id ? m.missionary_rating : m.provider_rating;
       const rating_text = operator_rating ? `⭐ ${operator_rating.toFixed(1)}` : '⭐ 5.0';
 
       return `
@@ -815,7 +842,7 @@ async function handleAdminLogin(e) {
   const passcode = document.getElementById('admin-passcode').value;
 
   try {
-    const res = await fetch('/api/students/login', {
+    const res = await fetch('/api/missionaries/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: 'admin', password: passcode })
@@ -873,13 +900,13 @@ function renderAdminView() {
 }
 
 async function loadAdminDashboard() {
-  // Load pending students KYC
+  // Load pending missionaries KYC
   try {
-    const res = await fetch('/api/students/pending', { headers: getAuthHeaders() });
+    const res = await fetch('/api/missionaries/pending', { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Error.');
     const data = await res.json();
-    STATE.pendingStudents = data;
-    renderPendingStudents();
+    STATE.pendingMissionaries = data;
+    renderPendingMissionaries();
   } catch (e) {}
 
   // Load pending providers KYC
@@ -907,27 +934,28 @@ async function loadAdminDashboard() {
   } catch (e) {}
 }
 
-function renderPendingStudents() {
-  const tbody = document.getElementById('admin-pending-students-body');
-  if (STATE.pendingStudents.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay estudiantes en espera de verificación KYC.</td></tr>';
+function renderPendingMissionaries() {
+  const tbody = document.getElementById('admin-pending-missionaries-body');
+  if (STATE.pendingMissionaries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay misioneros en espera de verificación KYC.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = STATE.pendingStudents.map(stud => `
+  tbody.innerHTML = STATE.pendingMissionaries.map(mish => `
     <tr>
-      <td><strong>${stud.name}</strong></td>
-      <td>${stud.phone}</td>
-      <td>${stud.email}</td>
-      <td><span class="badge badge-info" style="text-transform:uppercase;">${stud.kyc_type}</span></td>
-      <td><code>${stud.kyc_details}</code></td>
+      <td><strong>${mish.name}</strong></td>
+      <td>${mish.phone}</td>
+      <td>${mish.email}</td>
+      <td>${mish.type === 'student' ? `Estudiante (${mish.university})` : 'Sociedad Civil'}</td>
+      <td><span class="badge badge-info" style="text-transform:uppercase;">${mish.kyc_type}</span></td>
+      <td><code>${mish.kyc_details}</code></td>
       <td>
-        <button class="btn btn-sm btn-primary" onclick="window.verifyStudent('${stud.id}')">Verificar KYC</button>
+        <button class="btn btn-sm btn-primary" onclick="window.verifyMissionary('${mish.id}')">Verificar KYC</button>
       </td>
     </tr>
   `).join('');
 
-  window.verifyStudent = verifyStudent;
+  window.verifyMissionary = verifyMissionary;
 }
 
 function renderPendingProviders() {
@@ -981,9 +1009,9 @@ function renderPendingHospitals() {
   window.verifyHospital = verifyHospital;
 }
 
-async function verifyStudent(id) {
+async function verifyMissionary(id) {
   try {
-    const res = await fetch('/api/students/verify', {
+    const res = await fetch('/api/missionaries/verify', {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ id, status: 'verified' })
@@ -992,7 +1020,7 @@ async function verifyStudent(id) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error.');
 
-    showToast(`KYC del estudiante ${data.name} verificado.`, 'success');
+    showToast(`KYC del misionero ${data.name} verificado.`, 'success');
     loadAdminDashboard();
   } catch (error) {
     showToast(error.message, 'error');
@@ -1051,8 +1079,8 @@ function renderAdminMissionsList() {
         <div class="order-card-info">
           <h4>Misión a: ${m.hospital_name}</h4>
           <div class="order-card-meta">
-            <span>Operador: ${m.student_name || m.provider_name || 'Sin asignar'}</span>
-            ${m.student_kyc_details || m.provider_kyc_details ? `<span>KYC: <code>${m.student_kyc_details || m.provider_kyc_details}</code></span>` : ''}
+            <span>Operador: ${m.missionary_name || m.provider_name || 'Sin asignar'}</span>
+            ${m.missionary_kyc_details || m.provider_kyc_details ? `<span>KYC: <code>${m.missionary_kyc_details || m.provider_kyc_details}</code></span>` : ''}
             <span>Fecha: ${new Date(m.createdAt).toLocaleDateString('es-VE')}</span>
             <span class="badge ${status.badgeClass}">${status.label}</span>
           </div>
@@ -1109,8 +1137,8 @@ function renderPublicMissions() {
 
   list.innerHTML = STATE.missions.map(m => {
     const status = STATUS_MAP[m.status] || { label: m.status, badgeClass: 'badge-info' };
-    const operator_name = m.student_name || m.provider_name || 'Buscando operador';
-    const operator_rating = m.student_id ? m.student_rating : m.provider_rating;
+    const operator_name = m.missionary_name || m.provider_name || 'Buscando operador';
+    const operator_rating = m.missionary_id ? m.missionary_rating : m.provider_rating;
     const operator_stars = operator_rating ? ` (⭐ ${operator_rating.toFixed(1)})` : '';
     const hospital_stars = m.hospital_rating ? ` (⭐ ${m.hospital_rating.toFixed(1)})` : ' (⭐ 5.0)';
 
@@ -1177,12 +1205,12 @@ async function openOrderModal(missionId) {
     document.getElementById('modal-mission-title').textContent = `Misión: ${mission.id}`;
     document.getElementById('modal-hospital-name').textContent = mission.hospital_name;
     document.getElementById('modal-hospital-stars').textContent = mission.hospital_rating ? `⭐ ${mission.hospital_rating.toFixed(1)}` : '⭐ 5.0';
-    document.getElementById('modal-student-name').textContent = mission.student_name || 'Sin asignar';
-    document.getElementById('modal-student-stars').textContent = mission.student_name && mission.student_rating ? `⭐ ${mission.student_rating.toFixed(1)}` : '';
+    document.getElementById('modal-missionary-name').textContent = mission.missionary_name || 'Sin asignar';
+    document.getElementById('modal-missionary-stars').textContent = mission.missionary_name && mission.missionary_rating ? `⭐ ${mission.missionary_rating.toFixed(1)}` : '';
     document.getElementById('modal-provider-name').textContent = mission.provider_name || 'Sin asignar';
     document.getElementById('modal-provider-stars').textContent = mission.provider_name && mission.provider_rating ? `⭐ ${mission.provider_rating.toFixed(1)}` : '';
-    document.getElementById('modal-kyc-type').textContent = (mission.student_kyc_type || mission.provider_kyc_type || 'N/A').toUpperCase();
-    document.getElementById('modal-kyc-details').textContent = mission.student_kyc_details || mission.provider_kyc_details || 'N/A';
+    document.getElementById('modal-kyc-type').textContent = (mission.missionary_kyc_type || mission.provider_kyc_type || 'N/A').toUpperCase();
+    document.getElementById('modal-kyc-details').textContent = mission.missionary_kyc_details || mission.provider_kyc_details || 'N/A';
     document.getElementById('modal-donor-name').textContent = mission.donor_name || 'Sin asignar';
     document.getElementById('modal-donor-stars').textContent = mission.donor_name && mission.donor_rating ? `⭐ ${mission.donor_rating.toFixed(1)}` : '';
     document.getElementById('modal-total-val').textContent = `$${Number(mission.total_amount).toFixed(2)}`;
@@ -1217,7 +1245,7 @@ function renderModalActions(mission) {
 
   container.innerHTML = '';
 
-  const isOperator = (role === 'student' && mission.student_id === STATE.user.id) || (role === 'provider' && mission.provider_id === STATE.user.id);
+  const isOperator = (role === 'missionary' && mission.missionary_id === STATE.user.id) || (role === 'provider' && mission.provider_id === STATE.user.id);
 
   if (mission.status === 'completed') {
     container.innerHTML = `
@@ -1264,7 +1292,7 @@ function renderModalActions(mission) {
           <button type="submit" class="btn btn-primary btn-sm">Confirmar Fondos Recibidos</button>
         </form>
       `;
-      document.getElementById('receipt-confirm-submit-form').addEventListener('submit', (e) => handleStudentConfirmReceiptSubmit(e, mission.id));
+      document.getElementById('receipt-confirm-submit-form').addEventListener('submit', (e) => handleMissionaryConfirmReceiptSubmit(e, mission.id));
     } else if (mission.status === 'funded') {
       container.innerHTML = `
         <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-cyan)">Legalizar Compra / Despacho</h4>
@@ -1274,7 +1302,7 @@ function renderModalActions(mission) {
           <button type="submit" class="btn btn-success btn-sm">Cargar Factura</button>
         </form>
       `;
-      document.getElementById('invoice-submit-form').addEventListener('submit', (e) => handleStudentInvoiceSubmit(e, mission.id));
+      document.getElementById('invoice-submit-form').addEventListener('submit', (e) => handleMissionaryInvoiceSubmit(e, mission.id));
     } else if (mission.status === 'purchased') {
       container.innerHTML = `
         <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-emerald)">Completar Despacho en Hospital</h4>
@@ -1284,7 +1312,7 @@ function renderModalActions(mission) {
           <button type="submit" class="btn btn-primary btn-sm">Completar Entrega</button>
         </form>
       `;
-      document.getElementById('delivery-submit-form').addEventListener('submit', (e) => handleStudentDeliverySubmit(e, mission.id));
+      document.getElementById('delivery-submit-form').addEventListener('submit', (e) => handleMissionaryDeliverySubmit(e, mission.id));
     } else {
       container.innerHTML = `<div style="font-size:0.85rem;color:var(--text-muted);">Misión en estado: <strong>${mission.status.toUpperCase()}</strong>. Esperando fondeo de donadores.</div>`;
     }
@@ -1293,11 +1321,11 @@ function renderModalActions(mission) {
   } else {
     // Guest or Donor view inside modal
     if (mission.status === 'created') {
-      container.innerHTML = `<div style="font-size:0.85rem;color:var(--accent-amber);">Esperando que un estudiante o proveedor verificado KYC asuma esta misión.</div>`;
+      container.innerHTML = `<div style="font-size:0.85rem;color:var(--accent-amber);">Esperando que un misionero o proveedor verificado KYC asuma esta misión.</div>`;
     } else if (mission.status === 'claimed') {
-      const operator_kyc_type = mission.student_kyc_type || mission.provider_kyc_type;
-      const operator_kyc_details = mission.student_kyc_details || mission.provider_kyc_details;
-      const operator_name = mission.student_name || mission.provider_name;
+      const operator_kyc_type = mission.missionary_kyc_type || mission.provider_kyc_type;
+      const operator_kyc_details = mission.missionary_kyc_details || mission.provider_kyc_details;
+      const operator_name = mission.missionary_name || mission.provider_name;
       container.innerHTML = `
         <h4 style="font-size:0.8rem;text-transform:uppercase;color:var(--accent-amber);">Fondeo Humanitario Directo</h4>
         <p style="font-size:0.85rem;color:var(--text-muted);">Transfiera <strong>$${Number(mission.total_amount).toFixed(2)}</strong> a la cuenta del operador (${operator_name}):</p>
@@ -1308,7 +1336,19 @@ function renderModalActions(mission) {
         <form id="donor-transfer-form" style="display:flex;flex-direction:column;gap:0.75rem;">
           <div class="form-group" style="margin:0;">
             <label style="font-size:0.75rem;">Su Nombre / Organización</label>
-            <input type="text" id="donor-modal-name" placeholder="Ej: Donante Anónimo" required>
+            <input type="text" id="donor-modal-name" placeholder="Ej: Donante Miami" required>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.75rem;">Su Correo Electrónico</label>
+            <input type="email" id="donor-modal-email" placeholder="ejemplo@donante.com" required>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.75rem;">Su Teléfono Móvil</label>
+            <input type="text" id="donor-modal-phone" placeholder="Ej: +13059999999" required>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <input type="checkbox" id="donor-modal-anonymous" style="width:auto;cursor:pointer;">
+            <label for="donor-modal-anonymous" style="margin:0;font-size:0.75rem;color:var(--accent-cyan);cursor:pointer;user-select:none;">Donar de forma anónima (ocultar nombre al público)</label>
           </div>
           <div class="form-group" style="margin:0;">
             <label style="font-size:0.75rem;">Comprobante de Transferencia (Capture)</label>
@@ -1335,16 +1375,16 @@ async function submitRating(mission) {
   const stars = document.getElementById('rating-stars').value;
   const comment = document.getElementById('rating-comment').value;
 
-  let reviewee_role = 'student';
-  let reviewee_id = mission.student_id || mission.provider_id;
-  if (mission.student_id) {
-    reviewee_role = 'student';
+  let reviewee_role = 'missionary';
+  let reviewee_id = mission.missionary_id || mission.provider_id;
+  if (mission.missionary_id) {
+    reviewee_role = 'missionary';
   } else if (mission.provider_id) {
     reviewee_role = 'provider';
   }
 
   const role = STATE.user ? STATE.user.role : 'guest';
-  if (role === 'student' || role === 'provider') {
+  if (role === 'missionary' || role === 'provider') {
     reviewee_role = 'donor';
     reviewee_id = 'donor-seed'; // rate donor by default
   }
@@ -1372,6 +1412,9 @@ async function handleDonorTransferSubmit(e, missionId) {
   e.preventDefault();
   const fileInput = document.getElementById('donor-proof-photo');
   const donorName = document.getElementById('donor-modal-name').value.trim() || 'Donador de CUMIS';
+  const donorEmail = document.getElementById('donor-modal-email').value.trim();
+  const donorPhone = document.getElementById('donor-modal-phone').value.trim();
+  const isAnonymous = document.getElementById('donor-modal-anonymous').checked;
   
   if (fileInput.files.length === 0) {
     showToast('Seleccione un comprobante de transferencia.', 'error');
@@ -1380,6 +1423,9 @@ async function handleDonorTransferSubmit(e, missionId) {
 
   const formData = new FormData();
   formData.append('donor_name', donorName);
+  formData.append('donor_email', donorEmail);
+  formData.append('donor_phone', donorPhone);
+  formData.append('is_anonymous', isAnonymous);
   formData.append('transfer_proof', fileInput.files[0]);
 
   try {
@@ -1391,7 +1437,7 @@ async function handleDonorTransferSubmit(e, missionId) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al procesar donación.');
 
-    showToast('¡Comprobante de envío enviado con éxito! El estudiante ha sido notificado.', 'success');
+    showToast('¡Comprobante de envío enviado con éxito! El operador ha sido notificado.', 'success');
     openOrderModal(missionId);
     loadDashboardStats();
     if (STATE.currentTab === 'tab-portal') {
@@ -1402,7 +1448,7 @@ async function handleDonorTransferSubmit(e, missionId) {
   }
 }
 
-async function handleStudentConfirmReceiptSubmit(e, missionId) {
+async function handleMissionaryConfirmReceiptSubmit(e, missionId) {
   e.preventDefault();
   const fileInput = document.getElementById('receipt-confirm-photo');
   if (fileInput.files.length === 0) {
@@ -1427,13 +1473,13 @@ async function handleStudentConfirmReceiptSubmit(e, missionId) {
 
     showToast('¡Recepción de fondos confirmada! Ya puedes realizar la compra.', 'success');
     openOrderModal(missionId);
-    loadStudentDashboard();
+    loadMissionaryDashboard();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-async function handleStudentInvoiceSubmit(e, missionId) {
+async function handleMissionaryInvoiceSubmit(e, missionId) {
   e.preventDefault();
   const fileInput = document.getElementById('invoice-photo');
   if (fileInput.files.length === 0) return;
@@ -1453,13 +1499,13 @@ async function handleStudentInvoiceSubmit(e, missionId) {
 
     showToast('Factura legalizada.', 'success');
     openOrderModal(missionId);
-    loadStudentDashboard();
+    loadMissionaryDashboard();
   } catch (error) {
     showToast(error.message, 'error');
   }
 }
 
-async function handleStudentDeliverySubmit(e, missionId) {
+async function handleMissionaryDeliverySubmit(e, missionId) {
   e.preventDefault();
   const fileInput = document.getElementById('delivery-photo');
   if (fileInput.files.length === 0) return;
@@ -1479,7 +1525,7 @@ async function handleStudentDeliverySubmit(e, missionId) {
 
     showToast('¡Entrega del hospital registrada y verificada!', 'success');
     openOrderModal(missionId);
-    loadStudentDashboard();
+    loadMissionaryDashboard();
     loadDashboardStats();
   } catch (error) {
     showToast(error.message, 'error');

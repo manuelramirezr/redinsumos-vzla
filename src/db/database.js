@@ -113,7 +113,7 @@ async function initSqliteTables(db) {
     )
   `);
   await db.runAsync(`
-    CREATE TABLE IF NOT EXISTS students (
+    CREATE TABLE IF NOT EXISTS missionaries (
       id TEXT PRIMARY KEY,
       name TEXT,
       phone TEXT,
@@ -122,6 +122,8 @@ async function initSqliteTables(db) {
       kyc_details TEXT,
       password TEXT,
       status TEXT,
+      type TEXT,
+      university TEXT,
       createdAt TEXT,
       updatedAt TEXT
     )
@@ -159,12 +161,13 @@ async function initSqliteTables(db) {
       id TEXT PRIMARY KEY,
       hospital_id TEXT,
       hospital_name TEXT,
-      student_id TEXT,
-      student_name TEXT,
+      missionary_id TEXT,
+      missionary_name TEXT,
       provider_id TEXT,
       provider_name TEXT,
       donor_id TEXT,
       donor_name TEXT,
+      is_anonymous INTEGER DEFAULT 0,
       total_amount REAL,
       status TEXT,
       createdAt TEXT,
@@ -199,11 +202,19 @@ async function initSqliteTables(db) {
       id TEXT PRIMARY KEY,
       mission_id TEXT,
       donor_transfer_path TEXT,
-      student_receipt_path TEXT,
+      missionary_receipt_path TEXT,
       invoice_photo_path TEXT,
       delivery_photo_path TEXT,
       uploaded_at TEXT,
       createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+  await db.runAsync(`
+    CREATE TABLE IF NOT EXISTS conversation_context (
+      id TEXT PRIMARY KEY,
+      key TEXT UNIQUE,
+      value TEXT,
       updatedAt TEXT
     )
   `);
@@ -472,7 +483,7 @@ const DONOR_SEEDS = [
   { name: 'Fundación Salud y Vida', email: 'info@saludyvida.org', phone: '+13058888888' }
 ];
 
-const STUDENT_SEEDS = [
+const MISSIONARY_SEEDS = [
   {
     name: 'Carlos Mendoza',
     phone: '+584141234567',
@@ -480,7 +491,9 @@ const STUDENT_SEEDS = [
     kyc_type: 'meru',
     kyc_details: '@carlos_meru',
     password: 'password123',
-    status: 'verified'
+    status: 'verified',
+    type: 'student',
+    university: 'Universidad de los Andes (ULA)'
   }
 ];
 
@@ -528,13 +541,13 @@ export async function seedDatabase() {
     console.log('Seeded donors.');
   }
 
-  // Seed verified student Carlos Mendoza for quick testing
-  const students = await readTable('students');
-  if (students.length === 0) {
-    for (const stud of STUDENT_SEEDS) {
-      await insertRecord('students', stud);
+  // Seed verified missionary Carlos Mendoza for quick testing
+  const missionaries = await readTable('missionaries');
+  if (missionaries.length === 0) {
+    for (const mish of MISSIONARY_SEEDS) {
+      await insertRecord('missionaries', mish);
     }
-    console.log('Seeded students.');
+    console.log('Seeded missionaries.');
   }
 
   // Seed verified provider for quick testing
@@ -551,19 +564,19 @@ export async function seedDatabase() {
   if (ratings.length === 0) {
     const vargas = await findRecord('hospitals', { name: 'Hospital Vargas de Caracas' });
     const iahula = await findRecord('hospitals', { name: 'Hospital Universitario de los Andes (IAHULA)' });
-    const carlos = await findRecord('students', { name: 'Carlos Mendoza' });
+    const carlos = await findRecord('missionaries', { name: 'Carlos Mendoza' });
     const drogueria = await findRecord('providers', { name: 'Droguería Mérida C.A.' });
     
     if (vargas) {
       await insertRecord('ratings', { mission_id: 'MIS-INIT-1', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: vargas.id, stars: 5, comment: 'Excelente comunicación.' });
-      await insertRecord('ratings', { mission_id: 'MIS-INIT-2', reviewer_role: 'student', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: vargas.id, stars: 4, comment: 'Entrega coordinada a tiempo.' });
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-2', reviewer_role: 'missionary', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: vargas.id, stars: 4, comment: 'Entrega coordinada a tiempo.' });
     }
     if (iahula) {
       await insertRecord('ratings', { mission_id: 'MIS-INIT-3', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'hospital', reviewee_id: iahula.id, stars: 5, comment: 'Hospital muy organizado.' });
     }
     if (carlos) {
-      await insertRecord('ratings', { mission_id: 'MIS-INIT-4', reviewer_role: 'hospital', reviewer_id: 'seed', reviewee_role: 'student', reviewee_id: carlos.id, stars: 5, comment: 'Logística impecable.' });
-      await insertRecord('ratings', { mission_id: 'MIS-INIT-5', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'student', reviewee_id: carlos.id, stars: 4, comment: 'Buena comunicación de facturas.' });
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-4', reviewer_role: 'hospital', reviewer_id: 'seed', reviewee_role: 'missionary', reviewee_id: carlos.id, stars: 5, comment: 'Logística impecable.' });
+      await insertRecord('ratings', { mission_id: 'MIS-INIT-5', reviewer_role: 'donor', reviewer_id: 'seed', reviewee_role: 'missionary', reviewee_id: carlos.id, stars: 4, comment: 'Buena comunicación de facturas.' });
     }
     if (drogueria) {
       await insertRecord('ratings', { mission_id: 'MIS-INIT-6', reviewer_role: 'hospital', reviewer_id: 'seed', reviewee_role: 'provider', reviewee_id: drogueria.id, stars: 5, comment: 'Entrega directa rápida.' });
@@ -571,9 +584,45 @@ export async function seedDatabase() {
     console.log('Seeded baseline ratings.');
   }
 
+  // Seed conversation context
+  const contextRows = await readTable('conversation_context');
+  if (contextRows.length === 0) {
+    const contextSeeds = [
+      {
+        id: '1',
+        key: 'project_description',
+        value: 'CUMIS Conecta es una plataforma descentralizada para conectar hospitales, misioneros (estudiantes y sociedad civil), proveedores de insumos y donadores en Venezuela para facilitar el abastecimiento humanitario.',
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: '2',
+        key: 'conversation_history',
+        value: JSON.stringify({
+          passcode: 'manu2026',
+          renamed_from: 'students',
+          renamed_to: 'missionaries',
+          missionary_types: ['student', 'civil'],
+          student_additional_fields: ['university'],
+          hospital_registration_fields: ['name', 'location', 'phone', 'manager_name', 'manager_email', 'is_whatsapp', 'rif', 'image_path'],
+          donor_anonymous_masking: true,
+          donor_anonymous_real_name_masked_to: 'Donante Anónimo',
+          transfer_proof_secure_isolation: true,
+          verification_mechanisms: {
+            captcha: 'Dynamic Math sum puzzle'
+          }
+        }),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+    for (const ctx of contextSeeds) {
+      await insertRecord('conversation_context', ctx);
+    }
+    console.log('Seeded conversation context.');
+  }
+
   // Create empty files/tables if they don't exist
   if (DB_TYPE === 'json') {
-    const tables = ['missions', 'mission_items', 'chats', 'evidences', 'providers', 'ratings'];
+    const tables = ['missions', 'mission_items', 'chats', 'evidences', 'providers', 'ratings', 'missionaries', 'conversation_context'];
     for (const t of tables) {
       const tData = await readTable(t);
       if (tData.length === 0) {

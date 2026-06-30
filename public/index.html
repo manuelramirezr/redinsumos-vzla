@@ -43,7 +43,7 @@
     <section id="tab-public" class="tab-pane active">
       <div class="dashboard-hero">
         <h2>Rendición de Cuentas en Tiempo Real</h2>
-        <p>Conectando hospitales locales con estudiantes de medicina en Mérida y donadores de todo el mundo.</p>
+        <p>Conectando hospitales locales con misioneros en Mérida y donadores de todo el mundo.</p>
       </div>
       
       <!-- Key Statistics -->
@@ -60,7 +60,7 @@
         <div class="stat-card transit-card">
           <div class="stat-icon">🚚</div>
           <div class="stat-info">
-            <h3>Fondos en Campo (Estudiantes)</h3>
+            <h3>Fondos en Campo (Misioneros)</h3>
             <p class="stat-value" id="stat-transit">$0.00</p>
             <span class="stat-desc">En proceso de compra y logística</span>
           </div>
@@ -125,7 +125,7 @@
     <section id="tab-portal" class="tab-pane">
       <div class="portal-role-selector">
         <button class="role-select-btn active" data-role="hosp">🏥 Soy Hospital</button>
-        <button class="role-select-btn" data-role="stud">🎓 Soy Estudiante (Logística)</button>
+        <button class="role-select-btn" data-role="mish">🎓 Soy Misionero (Logística)</button>
         <button class="role-select-btn" data-role="prov">🏭 Soy Proveedor</button>
         <button class="role-select-btn" data-role="donor">🌍 Soy Donante</button>
       </div>
@@ -143,7 +143,7 @@
             <div class="glass-panel text-content">
               <h3>Solicitar Insumos Médicos</h3>
               <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;">
-                Seleccione su centro asistencial y agregue insumos del catálogo cerrado. Los estudiantes en Mérida serán notificados para realizar la compra física una vez que un donador financie la misión.
+                Seleccione su centro asistencial y agregue insumos del catálogo cerrado. Los misioneros en Mérida serán notificados para realizar la compra física una vez que un donador financie la misión.
               </p>
               <form id="hospital-mission-form">
                 <div class="form-group">
@@ -190,9 +190,9 @@
               <h3>¿Cómo funciona para Hospitales?</h3>
               <ul style="list-style:none;display:flex;flex-direction:column;gap:1rem;margin-top:1rem;font-size:0.9rem;color:var(--text-muted)">
                 <li>🏥 <strong>1. Solicitud:</strong> Registre los insumos necesarios a través de esta web o enviando un mensaje a nuestro agente de WhatsApp.</li>
-                <li>🎓 <strong>2. Asignación:</strong> Un estudiante de medicina de CUMIS toma la misión y asocia su cuenta Meru/Zelle.</li>
-                <li>🌍 <strong>3. Fondeo:</strong> Donadores internacionales transfieren el dinero directamente al estudiante.</li>
-                <li>📦 <strong>4. Entrega:</strong> El estudiante le lleva los insumos físicos al hospital. Usted valida la entrega firmando/subiendo una foto de control.</li>
+                <li>🎓 <strong>2. Asignación:</strong> Un misionero de CUMIS toma la misión y asocia su cuenta Meru/Zelle.</li>
+                <li>🌍 <strong>3. Fondeo:</strong> Donadores internacionales transfieren el dinero directamente al misionero.</li>
+                <li>📦 <strong>4. Entrega:</strong> El misionero le lleva los insumos físicos al hospital. Usted valida la entrega firmando/subiendo una foto de control.</li>
               </ul>
             </div>
           </div>
@@ -251,60 +251,71 @@
         </div>
       </div>
 
-      <!-- 3B. STUDENT VIEW -->
-      <div id="portal-view-stud" class="portal-subview">
-        <!-- Student Auth (if not logged in) -->
-        <div id="student-auth-container" class="auth-box glass-panel">
+      <!-- 3B. MISSIONARY VIEW -->
+      <div id="portal-view-mish" class="portal-subview">
+        <!-- Missionary Auth (if not logged in) -->
+        <div id="missionary-auth-container" class="auth-box glass-panel">
           <div class="auth-tabs">
-            <button class="auth-tab-btn active" data-auth-mode="login">Ingresar Estudiante</button>
-            <button class="auth-tab-btn" data-auth-mode="register">Registrar con KYC</button>
+            <button class="auth-tab-btn active" data-auth-mode="login">Ingresar Misionero</button>
+            <button class="auth-tab-btn" data-auth-mode="register">Registrar Misionero</button>
           </div>
           
           <!-- Login Form -->
-          <form id="student-login-form" class="auth-form active">
+          <form id="missionary-login-form" class="auth-form active">
             <div class="form-group">
-              <label for="stud-login-phone">Teléfono Móvil</label>
-              <input type="text" id="stud-login-phone" placeholder="Ej: +584141234567" required>
+              <label for="mish-login-phone">Teléfono Móvil</label>
+              <input type="text" id="mish-login-phone" placeholder="Ej: +584141234567" required>
             </div>
             <div class="form-group">
-              <label for="stud-login-password">Contraseña</label>
-              <input type="password" id="stud-login-password" placeholder="••••••••" required>
+              <label for="mish-login-password">Contraseña</label>
+              <input type="password" id="mish-login-password" placeholder="••••••••" required>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Entrar al Portal</button>
           </form>
 
           <!-- Register Form -->
-          <form id="student-register-form" class="auth-form">
+          <form id="missionary-register-form" class="auth-form">
             <div class="form-group">
-              <label for="stud-reg-name">Nombre Completo</label>
-              <input type="text" id="stud-reg-name" placeholder="Ej: Carlos Mendoza" required>
+              <label for="mish-reg-name">Nombre Completo</label>
+              <input type="text" id="mish-reg-name" placeholder="Ej: Carlos Mendoza" required>
             </div>
             <div class="form-group">
-              <label for="stud-reg-phone">Teléfono Móvil</label>
-              <input type="text" id="stud-reg-phone" placeholder="Ej: +584141234567" required>
+              <label for="mish-reg-phone">Teléfono Móvil</label>
+              <input type="text" id="mish-reg-phone" placeholder="Ej: +584141234567" required>
             </div>
             <div class="form-group">
-              <label for="stud-reg-email">Correo Electrónico</label>
-              <input type="email" id="stud-reg-email" placeholder="ejemplo@correo.com" required>
+              <label for="mish-reg-email">Correo Electrónico</label>
+              <input type="email" id="mish-reg-email" placeholder="ejemplo@correo.com" required>
             </div>
             <div class="form-group">
-              <label for="stud-reg-kyc-type">Billetera de Recibo (KYC)</label>
-              <select id="stud-reg-kyc-type" required>
+              <label for="mish-reg-type">Tipo de Misionero</label>
+              <select id="mish-reg-type" required>
+                <option value="student">Estudiante Universitario</option>
+                <option value="civil">Sociedad Civil</option>
+              </select>
+            </div>
+            <div class="form-group" id="mish-reg-university-container" style="margin-bottom: 1rem;">
+              <label for="mish-reg-university">Universidad a la que pertenece</label>
+              <input type="text" id="mish-reg-university" placeholder="Ej: Universidad de los Andes (ULA)">
+            </div>
+            <div class="form-group">
+              <label for="mish-reg-kyc-type">Billetera de Recibo (KYC)</label>
+              <select id="mish-reg-kyc-type" required>
                 <option value="meru">Meru Wallet (Recomendado en Venezuela)</option>
                 <option value="zelle">Zelle Personal</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="stud-reg-kyc-details">Usuario / Correo de Billetera</label>
-              <input type="text" id="stud-reg-kyc-details" placeholder="Ej: @carlos_meru o correo Zelle" required>
+              <label for="mish-reg-kyc-details">Usuario / Correo de Billetera</label>
+              <input type="text" id="mish-reg-kyc-details" placeholder="Ej: @carlos_meru o correo Zelle" required>
             </div>
             <div class="form-group">
-              <label for="stud-reg-password">Contraseña</label>
-              <input type="password" id="stud-reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+              <label for="mish-reg-password">Contraseña</label>
+              <input type="password" id="mish-reg-password" placeholder="Mínimo 6 caracteres" required minlength="6">
             </div>
 
             <!-- CAPTCHA slot -->
-            <div class="form-group captcha-group" id="stud-captcha-group" style="margin-bottom: 1.5rem;">
+            <div class="form-group captcha-group" id="mish-captcha-group" style="margin-bottom: 1.5rem;">
               <label class="captcha-label" style="font-weight:bold;color:var(--accent-cyan);"></label>
               <input type="text" class="captcha-input" placeholder="Resuelve la suma" required style="border-color:var(--accent-cyan);">
             </div>
@@ -313,17 +324,19 @@
           </form>
         </div>
 
-        <!-- Student Dashboard (if logged in) -->
-        <div id="student-dashboard" class="operator-layout hidden">
+        <!-- Missionary Dashboard (if logged in) -->
+        <div id="missionary-dashboard" class="operator-layout hidden">
           <!-- Sidebar profile -->
           <div class="operator-sidebar">
             <div class="glass-panel profile-card">
-              <h3>Mi Perfil de Logística Estudiantil</h3>
-              <p class="profile-name" id="student-profile-name">-</p>
+              <h3>Mi Perfil de Logística de Misionero</h3>
+              <p class="profile-name" id="missionary-profile-name">-</p>
               <div class="profile-meta">
-                <div><span>Método KYC:</span> <strong id="student-profile-kyc-type" style="text-transform:uppercase;">-</strong></div>
-                <div><span>Cuenta KYC:</span> <code id="student-profile-kyc-details">-</code></div>
-                <div><span>Teléfono:</span> <strong id="student-profile-phone">-</strong></div>
+                <div><span>Tipo:</span> <strong id="missionary-profile-type" style="text-transform:uppercase;">-</strong></div>
+                <div id="missionary-profile-university-row" class="hidden"><span>Universidad:</span> <strong id="missionary-profile-university">-</strong></div>
+                <div><span>Método KYC:</span> <strong id="missionary-profile-kyc-type" style="text-transform:uppercase;">-</strong></div>
+                <div><span>Cuenta KYC:</span> <code id="missionary-profile-kyc-details">-</code></div>
+                <div><span>Teléfono:</span> <strong id="missionary-profile-phone">-</strong></div>
                 <div><span>Estado KYC:</span> <span class="badge badge-success">Verificado</span></div>
               </div>
             </div>
@@ -333,14 +346,14 @@
           <div class="operator-main">
             <div class="glass-panel">
               <h3>Misiones de Salud Disponibles (Sin Tomar)</h3>
-              <div id="student-available-missions" class="orders-list mt-4">
+              <div id="missionary-available-missions" class="orders-list mt-4">
                 <!-- Rendered via JS -->
               </div>
             </div>
 
             <div class="glass-panel mt-4">
               <h3>Mis Misiones Asignadas</h3>
-              <div id="student-my-missions" class="orders-list mt-4">
+              <div id="missionary-my-missions" class="orders-list mt-4">
                 <!-- Rendered via JS -->
               </div>
             </div>
@@ -449,14 +462,28 @@
       <div id="portal-view-donor" class="portal-subview">
         <div class="portal-grid" style="grid-template-columns: 1fr;">
           <div class="glass-panel">
-            <div class="section-header-row" style="margin-bottom:1rem;">
+            <div class="section-header-row" style="margin-bottom:1rem;flex-wrap:wrap;gap:1rem;">
               <div>
                 <h3>Misiones en Campo Esperando Fondeo</h3>
-                <p>Estas misiones ya fueron asumidas por estudiantes y requieren transferencia directa Meru/Zelle.</p>
+                <p>Estas misiones ya fueron asumidas por misioneros y requieren transferencia directa Meru/Zelle.</p>
               </div>
-              <div class="form-group" style="flex-direction:row;align-items:center;margin:0;gap:0.5rem;">
-                <label for="donor-input-name" style="margin:0;">Nombre Donador:</label>
-                <input type="text" id="donor-input-name" placeholder="Ej: Donante Miami" style="width:200px;padding:0.4rem 0.8rem;">
+              <div class="donor-details-row" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;">
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <label for="donor-input-name" style="margin:0;font-size:0.85rem;">Nombre:</label>
+                  <input type="text" id="donor-input-name" placeholder="Ej: Donante Miami" style="width:160px;padding:0.4rem 0.8rem;border-radius:4px;border:1px solid var(--border-color);background:rgba(255,255,255,0.05);color:#fff;">
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <label for="donor-input-email" style="margin:0;font-size:0.85rem;">Email:</label>
+                  <input type="email" id="donor-input-email" placeholder="ejemplo@donante.com" style="width:160px;padding:0.4rem 0.8rem;border-radius:4px;border:1px solid var(--border-color);background:rgba(255,255,255,0.05);color:#fff;">
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <label for="donor-input-phone" style="margin:0;font-size:0.85rem;">Teléfono:</label>
+                  <input type="text" id="donor-input-phone" placeholder="Ej: +13059999999" style="width:140px;padding:0.4rem 0.8rem;border-radius:4px;border:1px solid var(--border-color);background:rgba(255,255,255,0.05);color:#fff;">
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <input type="checkbox" id="donor-input-anonymous" style="width:auto;cursor:pointer;">
+                  <label for="donor-input-anonymous" style="margin:0;font-size:0.85rem;color:var(--accent-cyan);cursor:pointer;user-select:none;">Donar de forma anónima</label>
+                </div>
               </div>
             </div>
             <div id="donor-missions-list" class="orders-list">
@@ -482,7 +509,7 @@
             <select id="agent-sim-persona">
               <option value="hosp-vargas" data-phone="+584121111111">🏥 Hospital Vargas (Tel: +584121111111)</option>
               <option value="hosp-iahula" data-phone="+584122222222">🏥 Hospital Universitario (Tel: +584122222222)</option>
-              <option value="stud-carlos" data-phone="+584141234567">🎓 Estudiante Carlos Mendoza (Tel: +584141234567)</option>
+              <option value="mish-carlos" data-phone="+584141234567">🎓 Misionero Carlos Mendoza (Tel: +584141234567)</option>
               <option value="prov-drogueria" data-phone="+584167777777">🏭 Proveedor Droguería Mérida (Tel: +584167777777)</option>
               <option value="donor-mia" data-phone="+13059999999">🌍 Donador Miami (Tel: +13059999999)</option>
             </select>
@@ -544,7 +571,7 @@
       <!-- Admin Password prompt (if not logged in) -->
       <div id="admin-auth-container" class="auth-box glass-panel">
         <h3>Consola Administrativa CUMIS</h3>
-        <p>Ingrese la clave del administrador para validar KYC de estudiantes y auditar misiones.</p>
+        <p>Ingrese la clave del administrador para validar KYC de misioneros y auditar misiones.</p>
         <form id="admin-login-form">
           <div class="form-group">
             <label for="admin-passcode">Clave de Administrador</label>
@@ -557,9 +584,9 @@
       <!-- Admin Dashboard (if logged in) -->
       <div id="admin-dashboard" class="admin-layout hidden">
         <div class="admin-grid-top" style="display:flex;flex-direction:column;gap:2rem;">
-          <!-- Verification Panel (Students) -->
+          <!-- Verification Panel (Missionaries) -->
           <div class="glass-panel admin-sub-panel">
-            <h3>Aprobación de KYC Estudiantil</h3>
+            <h3>Aprobación de KYC de Misioneros</h3>
             <div class="operator-verification-list">
               <table class="data-table">
                 <thead>
@@ -567,14 +594,15 @@
                     <th>Nombre</th>
                     <th>Teléfono</th>
                     <th>Email</th>
+                    <th>Tipo / Univ.</th>
                     <th>Billetera KYC</th>
                     <th>Usuario KYC</th>
                     <th>Acción</th>
                   </tr>
                 </thead>
-                <tbody id="admin-pending-students-body">
+                <tbody id="admin-pending-missionaries-body">
                   <!-- Rendered via JS -->
-                  <tr><td colspan="6" class="empty-state">No hay estudiantes en espera de verificación.</td></tr>
+                  <tr><td colspan="7" class="empty-state">No hay misioneros en espera de verificación.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -659,7 +687,7 @@
             <div class="modal-info-group">
               <h4>Ubicación y Destinatario</h4>
               <div class="detail-label">Hospital Receptor: <strong id="modal-hospital-name">-</strong> <span id="modal-hospital-stars" style="color:var(--accent-amber)"></span></div>
-              <div class="detail-label">Estudiante Asignado: <strong id="modal-student-name">-</strong> <span id="modal-student-stars" style="color:var(--accent-amber)"></span></div>
+              <div class="detail-label">Misionero Asignado: <strong id="modal-missionary-name">-</strong> <span id="modal-missionary-stars" style="color:var(--accent-amber)"></span></div>
               <div class="detail-label">Proveedor Directo: <strong id="modal-provider-name">-</strong> <span id="modal-provider-stars" style="color:var(--accent-amber)"></span></div>
               <div class="detail-label">Billetera de Pago (KYC): <strong id="modal-kyc-type" style="text-transform:uppercase;">-</strong></div>
               <div class="detail-label">Cuenta de Depósito: <code id="modal-kyc-details">-</code></div>
