@@ -1,0 +1,123 @@
+classDiagram
+    class Hospital {
+        +id: TEXT [PK]
+        +name: TEXT
+        +location: TEXT
+        +phone: TEXT
+        +manager_name: TEXT
+        +manager_email: TEXT
+        +is_whatsapp: INTEGER
+        +rif: TEXT
+        +image_path: TEXT
+        +status: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Missionary {
+        +id: TEXT [PK]
+        +name: TEXT
+        +phone: TEXT
+        +email: TEXT
+        +kyc_type: TEXT
+        +kyc_details: TEXT
+        +password: TEXT
+        +status: TEXT
+        +type: TEXT
+        +university: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Provider {
+        +id: TEXT [PK]
+        +name: TEXT
+        +phone: TEXT
+        +email: TEXT
+        +kyc_type: TEXT
+        +kyc_details: TEXT
+        +password: TEXT
+        +status: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Donor {
+        +id: TEXT [PK]
+        +name: TEXT
+        +email: TEXT
+        +phone: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Mission {
+        +id: TEXT [PK]
+        +hospital_id: TEXT [FK]
+        +hospital_name: TEXT
+        +missionary_id: TEXT [FK]
+        +missionary_name: TEXT
+        +provider_id: TEXT [FK]
+        +provider_name: TEXT
+        +donor_id: TEXT [FK]
+        +donor_name: TEXT
+        +is_anonymous: INTEGER
+        +total_amount: REAL
+        +status: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class MissionItem {
+        +id: TEXT [PK]
+        +mission_id: TEXT [FK]
+        +product_name: TEXT
+        +quantity: INTEGER
+        +price: REAL
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Evidence {
+        +id: TEXT [PK]
+        +mission_id: TEXT [FK]
+        +donor_transfer_path: TEXT
+        +missionary_receipt_path: TEXT
+        +invoice_photo_path: TEXT
+        +delivery_photo_path: TEXT
+        +uploaded_at: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Chat {
+        +id: TEXT [PK]
+        +mission_id: TEXT [FK]
+        +sender_role: TEXT
+        +sender_name: TEXT
+        +message: TEXT
+        +timestamp: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class Rating {
+        +id: TEXT [PK]
+        +mission_id: TEXT [FK]
+        +reviewer_id: TEXT
+        +reviewer_role: TEXT
+        +reviewee_id: TEXT
+        +reviewee_role: TEXT
+        +stars: INTEGER
+        +comment: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+    class ConversationContext {
+        +id: TEXT [PK]
+        +key: TEXT [UNIQUE]
+        +value: TEXT
+        +createdAt: TEXT
+        +updatedAt: TEXT
+    }
+
+    Hospital "1" -- "0..*" Mission : requests
+    Missionary "1" -- "0..*" Mission : claims
+    Provider "1" -- "0..*" Mission : claims_dispatch
+    Donor "1" -- "0..*" Mission : funds
+    Mission "1" -- "1..*" MissionItem : contains
+    Mission "1" -- "0..1" Evidence : validates
+    Mission "1" -- "0..*" Chat : coordinates
+    Mission "1" -- "0..*" Rating : reviews

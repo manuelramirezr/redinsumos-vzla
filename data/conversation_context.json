@@ -1,0 +1,41 @@
+{
+  "project_name": "CUMIS Conecta",
+  "administrator_passcode": "manu2026",
+  "database_type_active": "sqlite",
+  "database_type_supported": [
+    "json",
+    "sqlite",
+    "mongodb"
+  ],
+  "verification_checks": {
+    "human_verification": "Zero-dependency Math sum puzzle captcha generator inside signup forms",
+    "hospital_security_verification": "Blocked from creating missions via WhatsApp or Web until admin verifies profile KYC"
+  },
+  "roles_and_terminology": {
+    "hospital": "Health center requesting humanitarian supplies",
+    "missionary": "Field operators (students or civil society) claiming missions, confirming receipts, uploading invoice, distributing supplies",
+    "provider": "Commercial medical wholesalers claiming dispatch directly, skipping donor funding",
+    "donor": "International sponsors funding missions; supports 'is_anonymous' toggle",
+    "admin": "Platform supervisor reviewing pending profiles and validating compliance"
+  },
+  "privacy_and_security": {
+    "anonymous_donor_masking": "Public endpoints mask real donor names to 'Donante Anónimo'",
+    "receipts_and_transfer_isolation": "Wallet receipts and bank transfers captures are stripped from public responses unless caller is Admin or the mission's assigned operator"
+  },
+  "codebase_refactoring": {
+    "pattern": "Ponytail minimalist architecture rules",
+    "server_modules": [
+      "src/db/database.js",
+      "src/middleware/auth.js",
+      "src/routes/routes.js",
+      "server.js"
+    ],
+    "client_modules": [
+      "public/js/state.js",
+      "public/js/api.js",
+      "public/js/ui.js",
+      "public/js/views.js",
+      "public/js/app.js"
+    ]
+  }
+}

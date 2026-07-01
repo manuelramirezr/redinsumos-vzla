@@ -215,10 +215,12 @@ async function initSqliteTables(db) {
       id TEXT PRIMARY KEY,
       key TEXT UNIQUE,
       value TEXT,
+      createdAt TEXT,
       updatedAt TEXT
     )
   `);
 }
+
 
 function buildSqlQuery(query) {
   const entries = Object.entries(query).filter(([_, val]) => val !== undefined);

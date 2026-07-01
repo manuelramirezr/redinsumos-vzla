@@ -18,7 +18,7 @@ try {
 } catch (e) {}
 
 // Mount all REST API and chatbot agent webhooks
-app.use(router);
+app.use('/api', router);
 
 // Seed database on startup and run server
 seedDatabase().then(() => {

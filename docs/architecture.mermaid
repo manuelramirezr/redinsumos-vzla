@@ -1,0 +1,51 @@
+graph TD
+    %% Frontend Clients Layer
+    subgraph Cliente [Frontend Web Client]
+        PublicView[public/index.html]
+        AppEntry[js/app.js - Orchestrator Entrypoint]
+        State[js/state.js - Reactive State & Configs]
+        APIClient[js/api.js - fetch REST Methods]
+        UI[js/ui.js - Toasts, CAPTCHAs, navigation]
+        ViewsCompiler[js/views.js - Dashboards & Modals UI renders]
+
+        PublicView --> AppEntry
+        AppEntry --> State
+        AppEntry --> APIClient
+        AppEntry --> UI
+        AppEntry --> ViewsCompiler
+    end
+
+    %% Omnichannel Simulation
+    subgraph Omnichannel [Omnichannel Clients]
+        ChatbotSim[WhatsApp / Instagram Simulator console]
+        ChatbotSim -- "POST /api/webhooks/agent" --> Router
+    end
+
+    %% Backend Router & APIs
+    subgraph Servidor [Express API Server]
+        ServerMain[server.js - Launcher]
+        Router[src/routes/routes.js - Express Router]
+        AuthMiddleware[src/middleware/auth.js - Token validator]
+        Multer[Multer Upload Engine]
+
+        APIClient -- "fetch /api/*" --> ServerMain
+        ServerMain --> Router
+        Router --> AuthMiddleware
+        Router --> Multer
+    end
+
+    %% Database Abstraction layer
+    subgraph Data [Data Persistence Adapter]
+        DBWrapper[src/db/database.js - CRUD Abstract wrapper]
+        DB_JSON[Local JSON files - data/*.json]
+        DB_SQLite[SQLite3 Engine - data/database.sqlite]
+        DB_Mongo[MongoDB Client - local/remote URI]
+
+        Router --> DBWrapper
+        DBWrapper --> DB_JSON
+        DBWrapper --> DB_SQLite
+        DBWrapper --> DB_Mongo
+    end
+
+    %% Data Directories
+    Multer -- "saves captures to" --> Uploads[public/uploads/]

@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    actor Hospital as Hospital (WhatsApp)
+    actor Bot as WhatsApp Bot Webhook
+    actor Portal as Web Portal API
+    actor Missionary as Misionero/Proveedor
+    actor Donor as Donante
+    actor Admin as Administrador
+
+    %% Hospital Registration Flow
+    Hospital->>Portal: Registrar perfil de Hospital (manager email, phone, RIF, fachada)
+    Note over Portal: Estado del Hospital = 'pending'
+    Admin->>Portal: Iniciar sesión y aprobar Hospital KYC
+    Note over Portal: Estado del Hospital = 'verified'
+
+    %% Mission Creation
+    Hospital->>Bot: WhatsApp command: "Crear mision Vargas con 50 gasas, 20 alcohol"
+    Bot->>Portal: POST /api/webhooks/agent (verificar phone y estado 'verified')
+    Portal-->>Bot: Misión registrada con ID (ej: MIS-101, estado 'created')
+    Bot-->>Hospital: WhatsApp: "🩺 Misión creada con éxito: MIS-101. Misioneros notificados."
+
+    %% Claim Mission
+    Missionary->>Portal: Tomar misión (MIS-101) con billetera KYC (Zelle/Meru)
+    Portal-->>Missionary: Misión tomada con éxito (estado 'claimed')
+
+    %% Donor Funding
+    Donor->>Bot: WhatsApp: "Donar a la mision MIS-101"
+    Bot->>Portal: Obtener billetera KYC del operador asignado
+    Bot-->>Donor: WhatsApp: "💰 Envíe $230 a [MERU] @operador. Escriba 'confirmar fondos MIS-101' al terminar."
+    Donor->>Portal: (Opcional Web) Subir comprobante y activar 'is_anonymous'
+    Note over Portal: Estado de Misión = 'funding_sent'
+    
+    %% Confirm Receipt
+    Missionary->>Bot: WhatsApp: "Confirmar fondos MIS-101" (o vía Web Portal subiendo capture de billetera)
+    Portal->>Portal: Validar receptor
+    Note over Portal: Estado de Misión = 'funded'
+    Bot-->>Missionary: WhatsApp: "✅ Fondos confirmados y disponibles. Proceda a despachar."
+
+    %% Invoice Upload & Dispatch
+    Missionary->>Portal: Subir factura comercial (Capture)
+    Note over Portal: Estado de Misión = 'purchased'
+
+    %% Delivery Verification
+    Hospital->>Bot: WhatsApp: "Confirmar entrega MIS-101" (o vía Web Portal subiendo foto de entrega firmada)
+    Note over Portal: Estado de Misión = 'completed'
+    Bot-->>Hospital: WhatsApp: "🏥 Entrega confirmada. ¡Muchas gracias!"
+
+    %% Rating
+    Donor->>Bot: WhatsApp: "Valorar MIS-101 con 5 estrellas: Excelente despacho"
+    Bot->>Portal: Registrar valoración para Misionero/Proveedor
