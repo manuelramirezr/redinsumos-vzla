@@ -325,3 +325,62 @@ sequenceDiagram
     Donor->>Bot: WhatsApp: "Valorar MIS-101 con 5 estrellas: Excelente despacho"
     Bot->>Portal: Registrar valoración para Misionero/Proveedor
 ```
+
+### 4. Diagrama de Escenarios Operacionales (Flujos de Trabajo)
+El siguiente diagrama detalla los tres escenarios de ejecución principales en CUMIS Conecta:
+1. **Escenario 1 (Misión Fondeada Estándar)**: Creación por hospital ➔ Toma por operador ➔ Fondeo por donante ➔ Confirmación de fondos ➔ Carga de factura ➔ Entrega física.
+2. **Escenario 2 (Donación Directa)**: El operador cuenta con los insumos y asume el fondeo, saltándose los pasos de recaudación pública.
+3. **Escenario 3 (Rechazo por KYC Pendiente)**: Los centros de salud u operadores no verificados son rechazados preventivamente.
+
+```mermaid
+flowchart TD
+    %% Define styles
+    classDef default fill:#1e222b,stroke:#444,stroke-width:1px,color:#fff;
+    classDef highlight fill:#2c5282,stroke:#3182ce,stroke-width:2px,color:#fff;
+    classDef success fill:#276749,stroke:#38a169,stroke-width:2px,color:#fff;
+    classDef error fill:#9b2c2c,stroke:#e53e3e,stroke-width:2px,color:#fff;
+
+    Start([Inicio: Solicitud de Hospital])
+    CheckKYC{¿Hospital Verificado KYC?}
+    RejectHospital[⚠️ Denegar Creación de Misión]:::error
+    CreateMission[Registrar Misión: MIS-xxx]
+    
+    %% Scenario 1 vs 2 branches
+    ClaimMission[Operador Reclama Misión]
+    CheckDirect{¿Es Donación Directa?}
+    
+    %% Scenario 1: Standard Fondeada
+    Fondeo[Fase 1: Esperando Fondeo]:::highlight
+    DonorSends[Donante Envía Fondos & Capture]
+    OperatorConfirm[Operador Confirma Recepción]
+    
+    %% Scenario 2: Directa
+    DirectPath[Omitir Fondeo: Asignar Donante Directo]:::success
+    
+    %% Common Execution
+    Funded[Estado: Fondeado / Funded]:::success
+    Purchase[Operador Compra Insumos & Sube Factura]
+    Delivery[Operador Entrega en Hospital & Sube Capture]
+    Completed([Fin: Misión Completada & Calificada]):::success
+
+    Start --> CheckKYC
+    CheckKYC -- No --> RejectHospital
+    CheckKYC -- Sí --> CreateMission
+    CreateMission --> ClaimMission
+    ClaimMission --> CheckDirect
+    
+    CheckDirect -- No --> Fondeo
+    Fondeo --> DonorSends
+    DonorSends --> OperatorConfirm
+    OperatorConfirm --> Funded
+    
+    CheckDirect -- Sí --> DirectPath
+    DirectPath --> Funded
+    
+    Funded --> Purchase
+    Purchase --> Delivery
+    Delivery --> Completed
+```
+
+*(Versión renderizada en imagen: [docs/images/scenarios.png](file:///Users/manu/Documents/DEV/Wavelabs/redinsumos-vzla/docs/images/scenarios.png))*
+
